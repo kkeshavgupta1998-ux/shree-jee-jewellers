@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Shree Jee Jewellers</title>
-<script src="https://accounts.google.com/gsi/client"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap');
 :root{
@@ -189,7 +188,7 @@ input[type="date"]{color:var(--text);}
 <div id="login-screen" class="login-screen">
   <div class="login-logo">💍</div>
   <div class="login-title">Shree Jee Jewellers</div>
-  <div class="login-sub">Sign in with Google to sync your shop data automatically to Google Sheets.</div>
+  <div class="login-sub" style="transition:color 0.3s;">Sign in with Google to sync your shop data automatically to Google Sheets.</div>
   <button class="google-btn" onclick="signIn()">
     <svg width="24" height="24" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
     Sign in with Google
@@ -202,10 +201,10 @@ input[type="date"]{color:var(--text);}
 <!-- RE-LOGIN BANNER -->
 <div id="relogin-banner" style="display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#C0392B;color:#fff;padding:14px 16px;z-index:500;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,0.3);">
   <div>
-    <div style="font-size:14px;font-weight:700;">🔒 Reconnect to Google</div>
-    <div style="font-size:11px;opacity:0.85;margin-top:2px;">Tap to sync data to Google Sheets</div>
+    <div style="font-size:14px;font-weight:700;">🔒 Session Expired</div>
+    <div style="font-size:11px;opacity:0.85;margin-top:2px;">Tap to sign in again with Google</div>
   </div>
-  <button onclick="relogin()" style="background:#fff;color:#C0392B;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">🔄 Reconnect</button>
+  <button onclick="relogin()" style="background:#fff;color:#C0392B;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">🔄 Sign In</button>
 </div>
 <div class="topbar">
   <div style="font-size:22px;">💍</div>
@@ -412,174 +411,123 @@ const gf=id=>{const e=document.getElementById(id);return e?parseFloat(e.value)||
 function showToast(msg,dur=2400){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
 
 // ═══════════════════════════════════════════
-// AUTH
+// AUTH — Google OAuth2 Implicit Flow
+// No external library needed. Pure browser redirect.
+// Works on any device, any network, any browser.
 // ═══════════════════════════════════════════
-let tokenClient;
-let tokenExpiry = 0; // timestamp when token expires
+let tokenExpiry = 0;
 
-// ── GSI READY CHECK ──────────────────────────────────────────
-// Guards every google.accounts call — prevents ReferenceError
-function isGSIReady(){
-  return typeof google !== 'undefined' &&
-         typeof google.accounts !== 'undefined' &&
-         typeof google.accounts.oauth2 !== 'undefined';
+// Build the Google OAuth2 authorization URL
+function buildAuthUrl(hint=''){
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    redirect_uri: window.location.origin + window.location.pathname,
+    response_type: 'token',
+    scope: SCOPES,
+    include_granted_scopes: 'true',
+    state: 'signin',
+  });
+  if(hint) params.set('login_hint', hint);
+  return 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
 }
 
-function waitForGSI(callback, attempts=0){
-  if(isGSIReady()){
-    callback();
-  } else if(attempts < 20){
-    // Retry every 250ms for up to 5 seconds
-    setTimeout(()=>waitForGSI(callback, attempts+1), 250);
-  } else {
-    // GSI failed to load (network issue)
-    setSyncStatus('error','No internet');
-    showToast('⚠️ Cannot connect to Google. Check internet.');
-  }
-}
-
+// Called when user clicks Sign In — redirects to Google
 function signIn(){
-  waitForGSI(()=>{
-    tokenClient=google.accounts.oauth2.initTokenClient({
-      client_id:CLIENT_ID,
-      scope:SCOPES,
-      callback:async(resp)=>{
-        if(resp.error){showToast('❌ Sign in failed: '+resp.error);return;}
-        accessToken=resp.access_token;
-        tokenExpiry = Date.now() + (55 * 60 * 1000);
-        localStorage.setItem('sjj_token',accessToken);
-        localStorage.setItem('sjj_token_expiry', tokenExpiry);
-        spreadsheetId = localStorage.getItem('sjj_sheetId');
-        await initAfterSignIn();
-      }
-    });
-    tokenClient.requestAccessToken({prompt:'select_account'});
-  });
+  // Save current URL so we can restore after redirect
+  localStorage.setItem('sjj_pre_auth_path', window.location.href);
+  window.location.href = buildAuthUrl();
 }
 
+// Re-sign-in (reconnect banner) — same redirect flow
+function relogin(){
+  localStorage.setItem('sjj_pre_auth_path', window.location.href);
+  // Get hint from stored token if possible
+  const hint = localStorage.getItem('sjj_user_email') || '';
+  window.location.href = buildAuthUrl(hint);
+}
+
+// Read token from URL hash after redirect back from Google
+function readTokenFromUrl(){
+  const hash = window.location.hash.substring(1);
+  if(!hash) return false;
+  const params = new URLSearchParams(hash);
+  const token = params.get('access_token');
+  const expiresIn = parseInt(params.get('expires_in') || '3600');
+  const state = params.get('token_type');
+  if(!token) return false;
+
+  // Store token
+  accessToken = token;
+  tokenExpiry = Date.now() + ((expiresIn - 120) * 1000); // 2 min buffer
+  localStorage.setItem('sjj_token', accessToken);
+  localStorage.setItem('sjj_token_expiry', String(tokenExpiry));
+  spreadsheetId = localStorage.getItem('sjj_sheetId');
+
+  // Clean URL — remove hash so refresh doesn't re-read old token
+  window.history.replaceState(null, '', window.location.pathname);
+  return true;
+}
+
+// Check if stored token is still valid
+function isTokenFresh(){
+  return !!accessToken && Date.now() < tokenExpiry - (2 * 60 * 1000);
+}
+
+// Called when token is expired — show reconnect banner (no redirect yet)
 async function refreshTokenIfNeeded(){
-  // If token is NOT expired, use it as-is
-  if(accessToken && Date.now() < tokenExpiry - (2*60*1000)){
-    return true;
-  }
-  // No token at all — cannot refresh silently, need login
-  if(!accessToken){
-    showReloginBanner();
-    return false;
-  }
-  // Token is expired — try silent refresh first
-  // But only if GSI library is loaded
-  if(!isGSIReady()){
-    showReloginBanner();
-    return false;
-  }
-  return new Promise((resolve)=>{
-    try{
-      const tc = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-        callback:(resp)=>{
-          if(resp.error){
-            // Silent refresh failed — show reconnect banner but don't block the app
-            showReloginBanner();
-            resolve(false);
-            return;
-          }
-          accessToken = resp.access_token;
-          tokenExpiry = Date.now() + (55*60*1000);
-          localStorage.setItem('sjj_token', accessToken);
-          localStorage.setItem('sjj_token_expiry', tokenExpiry);
-          hideReloginBanner();
-          resolve(true);
-        },
-        error_callback:(err)=>{
-          // This fires for user_logged_out, immediate_failed etc.
-          showReloginBanner();
-          resolve(false);
-        }
-      });
-      // Try silent — prompt:'' means no popup, just silent check
-      tc.requestAccessToken({prompt:''});
-      tokenClient = tc;
-    }catch(e){
-      showReloginBanner();
-      resolve(false);
-    }
-  });
+  if(isTokenFresh()) return true;
+  // Can't refresh silently without GSI — show banner
+  showReloginBanner();
+  return false;
 }
 
 function signOut(){
   if(!confirm('Sign out?'))return;
-  if(accessToken) try{google.accounts.oauth2.revoke(accessToken);}catch(e){}
-  accessToken=null;spreadsheetId=null;tokenExpiry=0;
+  // Revoke token via Google endpoint
+  if(accessToken){
+    fetch('https://oauth2.googleapis.com/revoke?token='+accessToken, {method:'POST'}).catch(()=>{});
+  }
+  accessToken = null; spreadsheetId = null; tokenExpiry = 0;
   localStorage.removeItem('sjj_token');
   localStorage.removeItem('sjj_token_expiry');
   localStorage.removeItem('sjj_sheetId');
-  document.getElementById('main-app').style.display='none';
-  document.getElementById('login-screen').style.display='flex';
+  localStorage.removeItem('sjj_user_email');
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
 }
 
 async function tryRestoreSession(){
   const saved       = localStorage.getItem('sjj_token');
-  const savedExpiry = parseInt(localStorage.getItem('sjj_token_expiry')||'0');
+  const savedExpiry = parseInt(localStorage.getItem('sjj_token_expiry') || '0');
   const savedSheet  = localStorage.getItem('sjj_sheetId');
   const now         = Date.now();
-  const TWO_HOURS   = 2 * 60 * 60 * 1000;
 
-  // Case 1: No token at all → fresh login required
   if(!saved){
     showLoginScreen();
     return;
   }
 
-  // Case 2: Token exists and is still fresh (not expired)
+  accessToken   = saved;
+  tokenExpiry   = savedExpiry;
+  spreadsheetId = savedSheet;
+
   if(savedExpiry > now){
-    accessToken   = saved;
-    tokenExpiry   = savedExpiry;
-    spreadsheetId = savedSheet;
+    // Token still fresh — go straight to app
     await initAfterSignIn(true);
-    return;
-  }
-
-  // Case 3: Token expired BUT recently (< 2 hours) → try silent refresh
-  if(savedExpiry > 0 && (now - savedExpiry) < TWO_HOURS){
-    // Keep token in memory temporarily, show app with local data
-    accessToken   = saved;
-    tokenExpiry   = savedExpiry;
-    spreadsheetId = savedSheet;
-    // Show app immediately with local data
-    document.getElementById('login-screen').style.display='none';
-    document.getElementById('main-app').style.display='block';
-    document.getElementById('topbarDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-    setSyncStatus('syncing','Refreshing...');
+  } else {
+    // Token expired — show app with local data + reconnect banner
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+    document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+    setSyncStatus('error','Session expired');
+    showReloginBanner();
     renderDashboard();
-    // Try silent refresh in background
-    const refreshed = await refreshTokenIfNeeded();
-    if(refreshed){
-      try{
-        await ensureSpreadsheet();
-        await loadAllFromSheets();
-        setSyncStatus('ok','Synced');
-        hideReloginBanner();
-        renderDashboard();
-      }catch(e){
-        setSyncStatus('error','Offline');
-      }
-    }
-    // If silent refresh failed, banner is already shown by refreshTokenIfNeeded
-    return;
   }
-
-  // Case 4: Token expired long ago (> 2 hours) → show login screen cleanly
-  // Clear stale token to avoid confusion
-  localStorage.removeItem('sjj_token');
-  localStorage.removeItem('sjj_token_expiry');
-  showLoginScreen('Your session has expired. Please sign in again.');
 }
 
 function showLoginScreen(message=''){
-  document.getElementById('login-screen').style.display='flex';
-  document.getElementById('main-app').style.display='none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('main-app').style.display = 'none';
   if(message){
     const sub = document.querySelector('.login-sub');
     if(sub) sub.textContent = message;
@@ -587,26 +535,23 @@ function showLoginScreen(message=''){
 }
 
 async function initAfterSignIn(restored=false){
-  document.getElementById('login-screen').style.display='none';
-  document.getElementById('main-app').style.display='block';
-  document.getElementById('topbarDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-
-  // Token is guaranteed fresh when this is called from signIn()
-  // or from tryRestoreSession Case 2/3
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'block';
+  document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
   setSyncStatus('syncing','Connecting...');
-  renderDashboard(); // show local data immediately
+  renderDashboard();
   try{
     await ensureSpreadsheet();
     await loadAllFromSheets();
     setSyncStatus('ok','Synced');
     hideReloginBanner();
-    showToast(restored?'✅ Session restored':'✅ Connected!');
+    showToast(restored ? '✅ Session restored' : '✅ Connected!');
     renderDashboard();
   }catch(e){
-    if(e.message&&(e.message.includes('401')||e.message.includes('403'))){
+    if(e.message && (e.message.includes('401') || e.message.includes('403'))){
       setSyncStatus('error','Session expired');
       showReloginBanner();
-    }else{
+    } else {
       setSyncStatus('error','Offline');
       showToast('⚠️ Working offline – data saved locally');
     }
@@ -614,73 +559,37 @@ async function initAfterSignIn(restored=false){
 }
 
 function showReloginBanner(){
-  const banner = document.getElementById('relogin-banner');
-  if(banner) banner.style.display='flex';
+  const b = document.getElementById('relogin-banner');
+  if(b) b.style.display = 'flex';
 }
 function hideReloginBanner(){
-  const banner = document.getElementById('relogin-banner');
-  if(banner) banner.style.display='none';
+  const b = document.getElementById('relogin-banner');
+  if(b) b.style.display = 'none';
 }
-async function relogin(){
-  // Guard: make sure GSI library is loaded before proceeding
-  if(!isGSIReady()){
-    setSyncStatus('error','Loading...');
-    waitForGSI(()=>relogin()); // retry once GSI is ready
-    return;
+
+function handleSyncClick(){
+  if(!isTokenFresh()){
+    relogin();
+  } else {
+    manualSync();
   }
-  hideReloginBanner();
-  setSyncStatus('syncing','Reconnecting...');
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: async(resp)=>{
-      if(resp.error){
-        setSyncStatus('error','Failed');
-        showToast('❌ Re-login failed: ' + resp.error);
-        showReloginBanner(); // keep banner visible
-        return;
-      }
-      accessToken = resp.access_token;
-      tokenExpiry = Date.now() + (55*60*1000);
-      localStorage.setItem('sjj_token', accessToken);
-      localStorage.setItem('sjj_token_expiry', tokenExpiry);
-      hideReloginBanner();
-      try{
-        setSyncStatus('syncing','Syncing...');
-        await ensureSpreadsheet();
-        await loadAllFromSheets();
-        setSyncStatus('ok','Synced ✓');
-        showToast('✅ Reconnected & synced!');
-        renderDashboard();
-        if(currentScreen==='sales') renderSales();
-        if(currentScreen==='loans') renderLoans();
-      }catch(e){
-        setSyncStatus('error','Sync failed');
-        showToast('⚠️ Connected but sync failed – try again');
-      }
-    },
-    error_callback:(err)=>{
-      setSyncStatus('error','Failed');
-      showReloginBanner();
-      showToast('❌ Could not reconnect: ' + (err.type||'unknown error'));
-    }
-  });
-  // Use 'select_account' if silent fails — shows account picker
-  tokenClient.requestAccessToken({prompt:'consent'});
 }
 
 // ═══════════════════════════════════════════
 // SHEETS API
 // ═══════════════════════════════════════════
 async function sheetsReq(method,path,body=null){
-  // Auto-refresh token if expired before making request
-  await refreshTokenIfNeeded();
+  // Check token freshness before request
+  if(!isTokenFresh()){
+    setSyncStatus('error','Session expired');
+    showReloginBanner();
+    throw new Error('401 Token expired');
+  }
   const opts={method,headers:{'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'}};
   if(body)opts.body=JSON.stringify(body);
   const r=await fetch('https://sheets.googleapis.com/v4/spreadsheets'+path,opts);
   if(r.status===401){
-    // Token rejected — show re-login banner
-    setSyncStatus('error','Login expired');
+    setSyncStatus('error','Session expired');
     showReloginBanner();
     throw new Error('401 Unauthorized');
   }
@@ -689,11 +598,44 @@ async function sheetsReq(method,path,body=null){
 }
 async function ensureSpreadsheet(){
   if(!spreadsheetId)spreadsheetId=localStorage.getItem('sjj_sheetId');
-  if(spreadsheetId){try{await sheetsReq('GET','/'+spreadsheetId+'?fields=spreadsheetId');return;}catch(e){spreadsheetId=null;}}
-  await refreshTokenIfNeeded();
+  if(spreadsheetId){
+    try{
+      // Verify spreadsheet exists AND check existing tabs
+      const meta=await sheetsReq('GET','/'+spreadsheetId+'?fields=spreadsheetId,sheets(properties(title))');
+      const existingTabs=(meta.sheets||[]).map(s=>s.properties.title);
+      // Add any missing tabs (e.g. VendorPayables added in V2)
+      const missingTabs=SHEET_TABS.filter(t=>!existingTabs.includes(t));
+      if(missingTabs.length>0){
+        // Add missing sheets
+        const addRequests=missingTabs.map(t=>({addSheet:{properties:{title:t}}}));
+        await sheetsReq('POST','/'+spreadsheetId+':batchUpdate',{requests:addRequests});
+        // Write headers for new sheets
+        const headerData=missingTabs.map(t=>({range:`${t}!A1`,values:[SHEET_HEADERS[t]]}));
+        await sheetsReq('POST','/'+spreadsheetId+'/values:batchUpdate',{valueInputOption:'RAW',data:headerData});
+        console.log('✅ Added missing tabs:',missingTabs);
+      }
+      return;
+    }catch(e){spreadsheetId=null;}
+  }
   const search=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='Shree Jee Jewellers Data' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false&fields=files(id)`,{headers:{'Authorization':'Bearer '+accessToken}});
   const found=await search.json();
-  if(found.files&&found.files.length>0){spreadsheetId=found.files[0].id;localStorage.setItem('sjj_sheetId',spreadsheetId);return;}
+  if(found.files&&found.files.length>0){
+    spreadsheetId=found.files[0].id;
+    localStorage.setItem('sjj_sheetId',spreadsheetId);
+    // Check for missing tabs in found spreadsheet too
+    try{
+      const meta=await sheetsReq('GET','/'+spreadsheetId+'?fields=sheets(properties(title))');
+      const existingTabs=(meta.sheets||[]).map(s=>s.properties.title);
+      const missingTabs=SHEET_TABS.filter(t=>!existingTabs.includes(t));
+      if(missingTabs.length>0){
+        const addRequests=missingTabs.map(t=>({addSheet:{properties:{title:t}}}));
+        await sheetsReq('POST','/'+spreadsheetId+':batchUpdate',{requests:addRequests});
+        const headerData=missingTabs.map(t=>({range:`${t}!A1`,values:[SHEET_HEADERS[t]]}));
+        await sheetsReq('POST','/'+spreadsheetId+'/values:batchUpdate',{valueInputOption:'RAW',data:headerData});
+      }
+    }catch(e){}
+    return;
+  }
   const created=await sheetsReq('POST','',{properties:{title:'Shree Jee Jewellers Data'},sheets:SHEET_TABS.map(t=>({properties:{title:t}}))});
   spreadsheetId=created.spreadsheetId;localStorage.setItem('sjj_sheetId',spreadsheetId);
   const data=SHEET_TABS.map(t=>({range:`${t}!A1`,values:[SHEET_HEADERS[t]]}));
@@ -739,23 +681,15 @@ function setSyncStatus(state,label){
     btn.title = state==='error' ? 'Tap to reconnect' : '';
   }
 }
-function handleSyncClick(){
-  if(!isGSIReady()){
-    showToast('⚠️ Still loading Google... try again in a moment');
-    waitForGSI(()=>handleSyncClick());
+
+async function manualSync(){
+  if(!isTokenFresh()){
+    showReloginBanner();
+    showToast('⚠️ Session expired — please reconnect');
     return;
   }
-  if(!accessToken || Date.now() > tokenExpiry - (2*60*1000)){
-    relogin();
-  } else {
-    manualSync();
-  }
-}
-async function manualSync(){
-  if(!accessToken){showToast('Not signed in');return;}
   setSyncStatus('syncing','Syncing...');
   try{
-    await refreshTokenIfNeeded();
     await ensureSpreadsheet();
     await loadAllFromSheets();
     setSyncStatus('ok','Synced');
@@ -765,11 +699,16 @@ async function manualSync(){
     if(currentScreen==='sales')renderSales();
     if(currentScreen==='loans')renderLoans();
   }catch(e){
-    if(e.message&&e.message.includes('401')){setSyncStatus('error','Login expired');showReloginBanner();}
+    if(e.message&&e.message.includes('401')){setSyncStatus('error','Session expired');showReloginBanner();}
     else{setSyncStatus('error','Failed');showToast('❌ Sync failed – check internet');}
   }
 }
 async function syncRecord(tabName,record){
+  if(!isTokenFresh()){
+    // Save locally only — will need reconnect to sync
+    setSyncStatus('error','Offline');
+    return;
+  }
   setSyncStatus('syncing','Saving...');
   try{
     await appendRowToSheet(tabName,record);
@@ -777,7 +716,7 @@ async function syncRecord(tabName,record){
     hideReloginBanner();
   } catch(e){
     if(e.message&&e.message.includes('401')){
-      setSyncStatus('error','Login expired');
+      setSyncStatus('error','Session expired');
       showReloginBanner();
     } else {
       setSyncStatus('error','Offline');
@@ -2464,11 +2403,23 @@ function clearAllData(){['sales','loans','buys','udhars','sahukars','customers',
 // INIT
 // ═══════════════════════════════════════════
 window.addEventListener('load',()=>{
-  document.getElementById('login-screen').style.display='none';
+  // Show login screen immediately — never a blank page
+  document.getElementById('login-screen').style.display='flex';
   document.getElementById('main-app').style.display='none';
-  // Wait for GSI library to load THEN restore session
-  // This is the key fix — don't use a fixed timeout
-  waitForGSI(tryRestoreSession);
+
+  // Check if we just returned from Google OAuth redirect
+  // Google returns: #access_token=...&expires_in=3600&...
+  if(window.location.hash && window.location.hash.includes('access_token')){
+    const gotToken = readTokenFromUrl();
+    if(gotToken){
+      // Token read from URL — go straight to app
+      initAfterSignIn(false);
+      return;
+    }
+  }
+
+  // Normal startup — try to restore existing session
+  tryRestoreSession();
   // Auto daily backup (non-blocking, after 3s)
   setTimeout(()=>{
     autoDailyBackup();
