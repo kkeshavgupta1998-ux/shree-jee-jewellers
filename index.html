@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Shree Jee Jewellers</title>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://accounts.google.com/gsi/client"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap');
 :root{
@@ -388,22 +388,44 @@ function showToast(msg,dur=2400){const t=document.getElementById('toast');t.text
 let tokenClient;
 let tokenExpiry = 0; // timestamp when token expires
 
+// ── GSI READY CHECK ──────────────────────────────────────────
+// Guards every google.accounts call — prevents ReferenceError
+function isGSIReady(){
+  return typeof google !== 'undefined' &&
+         typeof google.accounts !== 'undefined' &&
+         typeof google.accounts.oauth2 !== 'undefined';
+}
+
+function waitForGSI(callback, attempts=0){
+  if(isGSIReady()){
+    callback();
+  } else if(attempts < 20){
+    // Retry every 250ms for up to 5 seconds
+    setTimeout(()=>waitForGSI(callback, attempts+1), 250);
+  } else {
+    // GSI failed to load (network issue)
+    setSyncStatus('error','No internet');
+    showToast('⚠️ Cannot connect to Google. Check internet.');
+  }
+}
+
 function signIn(){
-  tokenClient=google.accounts.oauth2.initTokenClient({
-    client_id:CLIENT_ID,
-    scope:SCOPES,
-    callback:async(resp)=>{
-      if(resp.error){showToast('❌ Sign in failed: '+resp.error);return;}
-      accessToken=resp.access_token;
-      // Google tokens last 3600 seconds — store expiry time (55 min to be safe)
-      tokenExpiry = Date.now() + (55 * 60 * 1000);
-      localStorage.setItem('sjj_token',accessToken);
-      localStorage.setItem('sjj_token_expiry', tokenExpiry);
-      spreadsheetId = localStorage.getItem('sjj_sheetId');
-      await initAfterSignIn();
-    }
+  waitForGSI(()=>{
+    tokenClient=google.accounts.oauth2.initTokenClient({
+      client_id:CLIENT_ID,
+      scope:SCOPES,
+      callback:async(resp)=>{
+        if(resp.error){showToast('❌ Sign in failed: '+resp.error);return;}
+        accessToken=resp.access_token;
+        tokenExpiry = Date.now() + (55 * 60 * 1000);
+        localStorage.setItem('sjj_token',accessToken);
+        localStorage.setItem('sjj_token_expiry', tokenExpiry);
+        spreadsheetId = localStorage.getItem('sjj_sheetId');
+        await initAfterSignIn();
+      }
+    });
+    tokenClient.requestAccessToken({prompt:'select_account'});
   });
-  tokenClient.requestAccessToken({prompt:'select_account'});
 }
 
 async function refreshTokenIfNeeded(){
@@ -417,6 +439,11 @@ async function refreshTokenIfNeeded(){
     return false;
   }
   // Token is expired — try silent refresh first
+  // But only if GSI library is loaded
+  if(!isGSIReady()){
+    showReloginBanner();
+    return false;
+  }
   return new Promise((resolve)=>{
     try{
       const tc = google.accounts.oauth2.initTokenClient({
@@ -566,6 +593,12 @@ function hideReloginBanner(){
   if(banner) banner.style.display='none';
 }
 async function relogin(){
+  // Guard: make sure GSI library is loaded before proceeding
+  if(!isGSIReady()){
+    setSyncStatus('error','Loading...');
+    waitForGSI(()=>relogin()); // retry once GSI is ready
+    return;
+  }
   hideReloginBanner();
   setSyncStatus('syncing','Reconnecting...');
   tokenClient = google.accounts.oauth2.initTokenClient({
@@ -678,9 +711,12 @@ function setSyncStatus(state,label){
   }
 }
 function handleSyncClick(){
-  // If token is stale, clicking the failed button should trigger relogin
+  if(!isGSIReady()){
+    showToast('⚠️ Still loading Google... try again in a moment');
+    waitForGSI(()=>handleSyncClick());
+    return;
+  }
   if(!accessToken || Date.now() > tokenExpiry - (2*60*1000)){
-    showReloginBanner();
     relogin();
   } else {
     manualSync();
@@ -2144,7 +2180,9 @@ function clearAllData(){['sales','loans','buys','udhars','sahukars','customers',
 window.addEventListener('load',()=>{
   document.getElementById('login-screen').style.display='none';
   document.getElementById('main-app').style.display='none';
-  setTimeout(tryRestoreSession,800);
+  // Wait for GSI library to load THEN restore session
+  // This is the key fix — don't use a fixed timeout
+  waitForGSI(tryRestoreSession);
   // Auto daily backup (non-blocking, after 3s)
   setTimeout(()=>{
     autoDailyBackup();
