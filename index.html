@@ -250,6 +250,28 @@ input[type="date"]{color:var(--text);}
       <div class="stat-card"><div class="stat-label">💰 Interest Earned</div><div class="stat-value green" id="dash-interest">₹0</div><div class="stat-sub">Active loans till today</div></div>
       <div class="stat-card"><div class="stat-label">📋 Overdue Loans</div><div class="stat-value red" id="dash-overdue">0</div><div class="stat-sub">Loans &gt;90 days</div></div>
     </div>
+    <!-- OWNER FINANCIAL DASHBOARD -->
+    <div class="section-title" style="margin-top:8px;">💼 Financial Position</div>
+    <div style="background:linear-gradient(135deg,#1A3A1A,#1E7D45);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;color:#fff;">
+      <div style="font-size:10px;opacity:0.7;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">CASH FLOW TODAY</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="font-size:10px;opacity:0.7;">In</div><div style="font-size:18px;font-weight:700;" id="dash-cash-in">₹0</div></div>
+        <div style="font-size:20px;opacity:0.5;">↔</div>
+        <div style="text-align:right;"><div style="font-size:10px;opacity:0.7;">Out</div><div style="font-size:18px;font-weight:700;" id="dash-cash-out">₹0</div></div>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,0.2);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;">
+        <span style="font-size:11px;opacity:0.7;">Net Cash Flow</span>
+        <span style="font-size:15px;font-weight:700;" id="dash-net-cash">₹0</span>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">📈 Month Inflow</div><div class="stat-value green" id="dash-month-in">₹0</div><div class="stat-sub" id="dash-month-in-sub">Sales + Repayments</div></div>
+      <div class="stat-card"><div class="stat-label">📉 Month Outflow</div><div class="stat-value red" id="dash-month-out">₹0</div><div class="stat-sub">Vendor + Loans given</div></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">🟡 Vendor Payable</div><div class="stat-value red" id="dash-vendor-payable">₹0</div><div class="stat-sub" id="dash-vendor-payable-sub">Outstanding</div></div>
+      <div class="stat-card"><div class="stat-label">🔵 Gold w/ Customers</div><div class="stat-value" id="dash-gold-cust">0g</div><div class="stat-sub">Active loan packets</div></div>
+    </div>
     <div class="section-title" style="margin-top:4px;">Quick Actions</div>
     <div class="action-grid">
       <div class="action-btn gold-btn" onclick="openForm('sale')"><div class="btn-icon">🧾</div><div class="btn-label">Add Sale</div><div class="btn-sub">Sell jewellery</div></div>
@@ -271,7 +293,9 @@ input[type="date"]{color:var(--text);}
       <div class="filter-tab active" onclick="filterSales('all',this)">All</div>
       <div class="filter-tab" onclick="filterSales('Cash',this)">Cash</div>
       <div class="filter-tab" onclick="filterSales('UPI',this)">UPI</div>
+      <div class="filter-tab" onclick="filterSales('Bank',this)">Bank</div>
       <div class="filter-tab" onclick="filterSales('Udhar',this)">Udhar</div>
+      <div class="filter-tab" onclick="filterSales('Split',this)">Split</div>
     </div>
     <div id="sales-list"></div>
   </div>
@@ -330,18 +354,19 @@ input[type="date"]{color:var(--text);}
 // ═══════════════════════════════════════════
 const CLIENT_ID='808956970350-iktsd5h3l3rh4qpn1n4hebti5co60kqn.apps.googleusercontent.com';
 const SCOPES='https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
-const SHEET_TABS=['Sales','Loans','Buys','Udhars','Sahukars','Customers','SahukarMaster','Payments','Vendors','VendorPurchases'];
+const SHEET_TABS=['Sales','Loans','Buys','Udhars','Sahukars','Customers','SahukarMaster','Payments','Vendors','VendorPurchases','VendorPayables'];
 const SHEET_HEADERS={
-  Sales:    ['id','date','customerId','customerName','fatherName','village','mobile','item','metal','weight','amount','payMode','notes','createdAt'],
+  Sales:    ['id','date','customerId','customerName','fatherName','village','mobile','item','metal','weight','amount','cashAmount','upiAmount','bankAmount','udharAmount','notes','createdAt'],
   Loans:    ['id','date','customerId','customerName','fatherName','village','mobile','item','metal','weight','amount','roi','packetNo','status','packetStatus','amountPaid','notes','createdAt'],
   Buys:     ['id','date','customerId','customerName','fatherName','village','mobile','item','metal','weight','amount','notes','createdAt'],
-  Udhars:   ['id','customerId','customerName','fatherName','village','mobile','amount','amountPaid','date','saleId','status','notes','createdAt'],
-  Sahukars: ['id','date','sahukarId','sahukarName','goldWeight','amount','roi','linkedPackets','status','notes','createdAt'],
+  Udhars:   ['id','customerId','customerName','fatherName','village','mobile','amount','amountPaid','roi','date','saleId','status','notes','createdAt'],
+  Sahukars: ['id','date','sahukarId','sahukarName','goldWeight','silverWeight','amount','roi','linkedPackets','status','notes','createdAt'],
   Customers:['id','name','fatherName','mobile','village','createdAt'],
   SahukarMaster:['id','name','mobile','address','createdAt'],
   Payments: ['id','refId','refType','amount','date','notes','createdAt'],
   Vendors:  ['id','name','mobile','city','notes','createdAt'],
-  VendorPurchases:['id','date','vendorId','vendorName','metal','weight','ratePerGram','totalAmount','notes','createdAt']
+  VendorPurchases:['id','date','vendorId','vendorName','metal','weight','ratePerGram','totalAmount','cashPaid','upiPaid','bankPaid','udharBalance','notes','createdAt'],
+  VendorPayables: ['id','vendorId','vendorName','purchaseId','amount','amountPaid','status','date','notes','createdAt']
 };
 
 // ═══════════════════════════════════════════
@@ -376,7 +401,11 @@ const fmt=n=>'₹'+Number(n||0).toLocaleString('en-IN');
 const fmtDate=d=>{if(!d)return'';return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});};
 const today=()=>new Date().toISOString().split('T')[0];
 const daysB=(d1,d2)=>Math.max(0,Math.floor((new Date(d2)-new Date(d1))/86400000));
-const calcInt=(amt,roi,from)=>Math.round((+amt)*(+roi/100)*(daysB(from,today())/30));
+const calcInt=(amt,roi,from,closedDate=null)=>{
+  if(!amt||!roi)return 0;
+  const end=closedDate||today();
+  return Math.max(0,Math.round((+amt)*(+roi/100)*(daysB(from,end)/30)));
+};
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const gv=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
 const gf=id=>{const e=document.getElementById(id);return e?parseFloat(e.value)||0:0;};
@@ -679,7 +708,7 @@ async function loadAllFromSheets(){
     const headers=rows[0];
     const records=rows.slice(1).map(row=>{
       const obj={};headers.forEach((h,j)=>{obj[h]=row[j]||'';});
-      ['amount','weight','roi','goldWeight','createdAt','amountPaid','ratePerGram','totalAmount'].forEach(f=>{if(obj[f]!==undefined)obj[f]=parseFloat(obj[f])||0;});
+      ['amount','weight','roi','goldWeight','silverWeight','createdAt','amountPaid','ratePerGram','totalAmount','cashAmount','upiAmount','bankAmount','udharAmount','cashPaid','upiPaid','bankPaid','udharBalance'].forEach(f=>{if(obj[f]!==undefined)obj[f]=parseFloat(obj[f])||0;});
       return obj;
     });
     DB.set(tab.toLowerCase(),records);
@@ -866,7 +895,21 @@ function calcVPTotal(){
   const w=parseFloat(document.getElementById('vp-weight')?.value)||0;
   const r=parseFloat(document.getElementById('vp-rate')?.value)||0;
   const tot=document.getElementById('vp-total');
-  if(tot&&w&&r)tot.value=(w*r).toFixed(0);
+  if(tot&&w&&r){tot.value=(w*r).toFixed(0);updateVPBalance();}
+}
+function updateVPBalance(){
+  const total=parseFloat(document.getElementById('vp-total')?.value)||0;
+  const cash=parseFloat(document.getElementById('vp-cash')?.value)||0;
+  const upi=parseFloat(document.getElementById('vp-upi')?.value)||0;
+  const bank=parseFloat(document.getElementById('vp-bank')?.value)||0;
+  const udhar=parseFloat(document.getElementById('vp-udhar')?.value)||0;
+  const sum=cash+upi+bank+udhar;
+  const el=document.getElementById('vp-balance-check');
+  if(!total||!el)return;
+  const diff=Math.abs(total-sum);
+  if(diff<1){el.textContent='✅ Balanced: '+fmt(sum);el.style.color='var(--green)';}
+  else if(sum<total){el.textContent='⚠️ Short by '+fmt(total-sum);el.style.color='var(--red)';}
+  else{el.textContent='⚠️ Exceeds by '+fmt(sum-total);el.style.color='var(--red)';}
 }
 // ═══════════════════════════════════════════
 // FORMS
@@ -887,11 +930,24 @@ function openForm(type){
       </div>
       <div class="field-row">
         <div class="field"><label>Weight (g)</label><input type="number" id="f-weight" placeholder="0.00" step="0.01"></div>
-        <div class="field"><label>Amount (₹) *</label><input type="number" id="f-amount" placeholder="0"></div>
+        <div class="field"><label>Total Amount (₹) *</label><input type="number" id="f-amount" placeholder="0" oninput="updateSaleBalance()"></div>
       </div>
-      <div class="field"><label>Payment Mode</label>
-        <div class="seg-control"><button class="seg-btn active" onclick="setSeg(this,'f-pay','Cash')">💵 Cash</button><button class="seg-btn" onclick="setSeg(this,'f-pay','UPI')">📱 UPI</button><button class="seg-btn" onclick="setSeg(this,'f-pay','Udhar')">📋 Udhar</button></div>
-        <input type="hidden" id="f-pay" value="Cash">
+      <div class="form-section-label">💰 Payment Breakdown</div>
+      <div style="background:#F0FFF5;border:1.5px solid var(--green);border-radius:12px;padding:12px 14px;margin-bottom:14px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Cash + UPI + Bank + Udhar must equal Total Amount</div>
+        <div class="field-row">
+          <div class="field"><label>💵 Cash (₹)</label><input type="number" id="f-cash" placeholder="0" value="0" oninput="updateSaleBalance()"></div>
+          <div class="field"><label>📱 UPI (₹)</label><input type="number" id="f-upi" placeholder="0" value="0" oninput="updateSaleBalance()"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>🏦 Bank Transfer (₹)</label><input type="number" id="f-bank" placeholder="0" value="0" oninput="updateSaleBalance()"></div>
+          <div class="field"><label>📋 Udhar (₹)</label><input type="number" id="f-udhar" placeholder="0" value="0" oninput="updateSaleBalance()"></div>
+        </div>
+        <div id="sale-balance-check" style="font-size:13px;font-weight:700;padding:8px 0;border-top:1px solid var(--border);margin-top:6px;color:var(--muted);">Enter amounts above</div>
+      </div>
+      <div id="f-udhar-roi-wrap" style="display:none;" class="field">
+        <label>Udhar Interest Rate (%/month, 0 = interest-free)</label>
+        <input type="number" id="f-udhar-roi" placeholder="0" value="0" step="0.1" min="0">
       </div>
       <div class="field"><label>Notes</label><textarea id="f-notes" placeholder="Any extra details, jewellery description, instructions..."></textarea></div>
       <button class="submit-btn" onclick="saveSale()">✓ Save Sale</button>
@@ -951,8 +1007,8 @@ function openForm(type){
       </div>
       <div class="field"><label>Interest Rate (%/month)</label><input type="number" id="f-roi" value="1.5" step="0.1"></div>
       <div class="field"><label>Linked Packets (In Shop only)</label>
-        <select id="f-packet" multiple style="height:100px;font-size:14px;">
-          ${inShopLoans.length?inShopLoans.map(l=>`<option value="${l.packetNo}">${l.packetNo} – ${esc(l.customerName)}</option>`).join(''):'<option disabled>No packets in shop</option>'}
+        <select id="f-packet" multiple style="height:120px;font-size:13px;font-family:monospace;">
+          ${inShopLoans.length?inShopLoans.map(l=>`<option value="${l.packetNo}">${l.packetNo} | ${l.metal} | ${l.weight}g | ${esc(l.customerName)}</option>`).join(''):'<option disabled>No packets in shop</option>'}
         </select>
         <div style="font-size:11px;color:var(--muted);margin-top:4px;">Tap to select packets being pledged</div>
       </div>
@@ -996,7 +1052,20 @@ function openForm(type){
         <div class="field"><label>Weight (g) *</label><input type="number" id="vp-weight" placeholder="0.00" step="0.01" oninput="calcVPTotal()"></div>
         <div class="field"><label>Rate per gram (₹)</label><input type="number" id="vp-rate" placeholder="0" oninput="calcVPTotal()"></div>
       </div>
-      <div class="field"><label>Total Amount (₹)</label><input type="number" id="vp-total" placeholder="Auto-calculated or enter manually"></div>
+      <div class="field"><label>Total Amount (₹) *</label><input type="number" id="vp-total" placeholder="Auto-calculated" oninput="updateVPBalance()"></div>
+      <div class="form-section-label">💰 Payment Breakdown</div>
+      <div style="background:#FFF5F0;border:1.5px solid var(--gold);border-radius:12px;padding:12px 14px;margin-bottom:14px;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Cash + UPI + Bank + Udhar must equal Total Amount</div>
+        <div class="field-row">
+          <div class="field"><label>💵 Cash Paid (₹)</label><input type="number" id="vp-cash" placeholder="0" value="0" oninput="updateVPBalance()"></div>
+          <div class="field"><label>📱 UPI Paid (₹)</label><input type="number" id="vp-upi" placeholder="0" value="0" oninput="updateVPBalance()"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>🏦 Bank Transfer (₹)</label><input type="number" id="vp-bank" placeholder="0" value="0" oninput="updateVPBalance()"></div>
+          <div class="field"><label>📋 Udhar Balance (₹)</label><input type="number" id="vp-udhar" placeholder="0" value="0" oninput="updateVPBalance()"></div>
+        </div>
+        <div id="vp-balance-check" style="font-size:13px;font-weight:700;padding:8px 0;border-top:1px solid var(--border);margin-top:6px;color:var(--muted);">Enter amounts above</div>
+      </div>
       <div class="field"><label>Notes</label><textarea id="vp-notes" placeholder="Invoice no, quality notes..."></textarea></div>
       <button class="submit-btn" onclick="saveVendorPurchase()">✓ Save Purchase</button>
       <button class="cancel-btn" onclick="closeModal()">Cancel</button>`;
@@ -1026,25 +1095,66 @@ function onSahukarSelect(sel){
 // ═══════════════════════════════════════════
 // SAVE FUNCTIONS
 // ═══════════════════════════════════════════
+function updateSaleBalance(){
+  const total=gf('f-amount');
+  const cash=gf('f-cash'),upi=gf('f-upi'),bank=gf('f-bank'),udhar=gf('f-udhar');
+  const sum=cash+upi+bank+udhar;
+  const el=document.getElementById('sale-balance-check');
+  const udharWrap=document.getElementById('f-udhar-roi-wrap');
+  if(!total){if(el)el.style.color='var(--muted)';if(el)el.textContent='Enter amounts above';return;}
+  const diff=Math.abs(total-sum);
+  if(el){
+    if(diff<1){el.textContent='✅ Balanced: '+fmt(sum);el.style.color='var(--green)';}
+    else if(sum<total){el.textContent='⚠️ Short by '+fmt(total-sum);el.style.color='var(--red)';}
+    else{el.textContent='⚠️ Exceeds by '+fmt(sum-total);el.style.color='var(--red)';}
+  }
+  if(udharWrap)udharWrap.style.display=udhar>0?'block':'none';
+}
 function saveSale(){
   const name=gv('f-name'),amount=gf('f-amount');
   if(!name||!amount){showToast('⚠️ Name and Amount required');return;}
   if(amount<=0){showToast('⚠️ Amount must be greater than 0');return;}
+  // Inventory safety check
+  const saleWeight=gf('f-weight');
+  const saleMetal=document.getElementById('f-metal').value;
+  if(saleWeight>0){
+    const stock=calcCurrentStock(saleMetal);
+    if(saleWeight>stock+0.01){showToast('⚠️ Insufficient '+saleMetal+' stock! Available: '+stock.toFixed(2)+'g, Needed: '+saleWeight+'g');return;}
+  }
+  const cashAmt=gf('f-cash'),upiAmt=gf('f-upi'),bankAmt=gf('f-bank'),udharAmt=gf('f-udhar');
+  const sumPay=cashAmt+upiAmt+bankAmt+udharAmt;
+  if(Math.abs(amount-sumPay)>1){showToast('⚠️ Payment split ('+fmt(sumPay)+') must equal Total ('+fmt(amount)+')');return;}
   const cid=saveCustomerIfNew(name,gv('f-father'),gv('f-mobile'),gv('f-village'));
-  const s={id:DB.nextId('sales'),date:gv('f-date'),customerId:cid,customerName:name,fatherName:gv('f-father'),village:gv('f-village'),mobile:gv('f-mobile'),item:gv('f-item'),metal:document.getElementById('f-metal').value,weight:gf('f-weight'),amount,payMode:document.getElementById('f-pay').value,notes:gv('f-notes'),createdAt:Date.now()};
+  // Determine payMode label for display/filter
+  const modes=[];
+  if(cashAmt>0)modes.push('Cash');
+  if(upiAmt>0)modes.push('UPI');
+  if(bankAmt>0)modes.push('Bank');
+  if(udharAmt>0)modes.push('Udhar');
+  const payMode=modes.length===1?modes[0]:'Split';
+  const s={id:DB.nextId('sales'),date:gv('f-date'),customerId:cid,customerName:name,fatherName:gv('f-father'),village:gv('f-village'),mobile:gv('f-mobile'),item:gv('f-item'),metal:document.getElementById('f-metal').value,weight:gf('f-weight'),amount,cashAmount:cashAmt,upiAmount:upiAmt,bankAmount:bankAmt,udharAmount:udharAmt,payMode,notes:gv('f-notes'),createdAt:Date.now()};
   const sales=DB.get('sales');sales.push(s);DB.set('sales',sales);
-  if(s.payMode==='Udhar'){
+  if(udharAmt>0){
     const u=DB.get('udhars');
-    u.push({id:s.id,customerId:cid,customerName:name,fatherName:s.fatherName,village:s.village,mobile:s.mobile,amount,amountPaid:0,date:s.date,saleId:s.id,status:'Pending',notes:gv('f-notes')||'',createdAt:Date.now()});
+    const udharRoi=gf('f-udhar-roi')||0;
+    u.push({id:s.id,customerId:cid,customerName:name,fatherName:s.fatherName,village:s.village,mobile:s.mobile,amount:udharAmt,amountPaid:0,roi:udharRoi,date:s.date,saleId:s.id,status:'Pending',notes:gv('f-notes')||'',createdAt:Date.now()});
     DB.set('udhars',u);
   }
   closeModal();showToast('✅ Sale saved! '+s.id);renderDashboard();if(currentScreen==='sales')renderSales();
   syncRecord('Sales',s);
-  // Also sync udhar if created
-  if(s.payMode==='Udhar'){
+  if(udharAmt>0){
     const newUdhar=DB.get('udhars').find(u=>u.saleId===s.id);
     if(newUdhar) syncRecord('Udhars',newUdhar);
   }
+}
+function calcCurrentStock(metal){
+  const vps=DB.getActive('vendorpurchases');
+  const sales=DB.getActive('sales');
+  const buys=DB.get('buys').filter(b=>!b.deleted);
+  const vpIn=vps.filter(v=>v.metal===metal).reduce((a,v)=>a+(+v.weight||0),0);
+  const soldOut=sales.filter(s=>s.metal===metal).reduce((a,s)=>a+(+s.weight||0),0);
+  const boughtIn=buys.filter(b=>b.metal===metal).reduce((a,b)=>a+(+b.weight||0),0);
+  return Math.max(0,vpIn+boughtIn-soldOut);
 }
 function saveBuy(){
   const name=gv('f-name'),amount=gf('f-amount');
@@ -1103,9 +1213,18 @@ function saveVendorPurchase(){
   const vendorId=gv('vp-vendor-id'),vendorName=gv('vp-vendor-name');
   const weight=gf('vp-weight'),total=gf('vp-total');
   if(!vendorName||!weight||!total){showToast('⚠️ Vendor, Weight and Amount required');return;}
-  const vp={id:DB.nextId('vendorpurchases'),date:gv('vp-date'),vendorId,vendorName,metal:document.getElementById('vp-metal').value,weight,ratePerGram:gf('vp-rate'),totalAmount:total,notes:gv('vp-notes'),createdAt:Date.now()};
+  const cashP=gf('vp-cash'),upiP=gf('vp-upi'),bankP=gf('vp-bank'),udharB=gf('vp-udhar');
+  const sumP=cashP+upiP+bankP+udharB;
+  if(sumP>0&&Math.abs(total-sumP)>1){showToast('⚠️ Payment split ('+fmt(sumP)+') must equal Total ('+fmt(total)+')');return;}
+  const vp={id:DB.nextId('vendorpurchases'),date:gv('vp-date'),vendorId,vendorName,metal:document.getElementById('vp-metal').value,weight,ratePerGram:gf('vp-rate'),totalAmount:total,cashPaid:cashP,upiPaid:upiP,bankPaid:bankP,udharBalance:udharB,notes:gv('vp-notes'),createdAt:Date.now()};
   const list=DB.get('vendorpurchases');list.push(vp);DB.set('vendorpurchases',list);
-  closeModal();showToast('✅ Purchase saved! Stock updated.');renderDashboard();
+  // Create vendor payable if udhar balance exists
+  if(udharB>0){
+    const payable={id:DB.nextId('vendorpayables'),vendorId,vendorName,purchaseId:vp.id,amount:udharB,amountPaid:0,status:'Pending',date:gv('vp-date'),notes:'From purchase '+vp.id,createdAt:Date.now()};
+    const payables=DB.get('vendorpayables');payables.push(payable);DB.set('vendorpayables',payables);
+    syncRecord('VendorPayables',payable);
+  }
+  closeModal();showToast('✅ Purchase saved! Stock updated.'+(udharB>0?' Payable: '+fmt(udharB):''));renderDashboard();
   syncRecord('VendorPurchases',vp);
 }
 function saveCustomerMaster(){
@@ -1232,6 +1351,50 @@ function renderDashboard(){
   // Overdue count
   const overdueEl=document.getElementById('dash-overdue');
   if(overdueEl)overdueEl.textContent=rL.filter(l=>daysB(l.date,td)>90).length;
+
+  // ── OWNER FINANCIAL DASHBOARD ─────────────────────────
+  const payments=DB.get('payments');
+  const todayPayments=payments.filter(p=>p.date===td);
+  const monthPayments=payments.filter(p=>(p.date||'').startsWith(tm));
+
+  // Today cash in/out
+  const todayCashIn = sum(tS.filter(s=>s.cashAmount>0),'cashAmount') + sum(tS.filter(s=>!s.cashAmount&&s.payMode==='Cash'),'amount') +
+    todayPayments.filter(p=>p.refType==='loans'||p.refType==='udhars').reduce((a,p)=>a+(+p.amount||0),0);
+  const todayCashOut = DB.getActive('vendorpurchases').filter(v=>v.date===td).reduce((a,v)=>a+(+v.cashPaid||+v.totalAmount||0),0) +
+    loans.filter(l=>l.date===td).reduce((a,l)=>a+(+l.amount||0),0);
+  const netCash=todayCashIn-todayCashOut;
+
+  const cashInEl=document.getElementById('dash-cash-in');
+  const cashOutEl=document.getElementById('dash-cash-out');
+  const netCashEl=document.getElementById('dash-net-cash');
+  if(cashInEl)cashInEl.textContent=fmt(todayCashIn);
+  if(cashOutEl)cashOutEl.textContent=fmt(todayCashOut);
+  if(netCashEl){netCashEl.textContent=fmt(Math.abs(netCash));netCashEl.style.color=netCash>=0?'#90EE90':'#FFB0B0';}
+
+  // Month inflow/outflow
+  const mSales=sales.filter(s=>s.date.startsWith(tm));
+  const mRepayments=monthPayments.filter(p=>p.refType==='loans'||p.refType==='udhars').reduce((a,p)=>a+(+p.amount||0),0);
+  const monthInflow=sum(mSales,'amount')+mRepayments;
+  const monthVP=DB.getActive('vendorpurchases').filter(v=>(v.date||'').startsWith(tm)).reduce((a,v)=>a+(+v.totalAmount||0),0);
+  const monthLoansGiven=loans.filter(l=>(l.date||'').startsWith(tm)).reduce((a,l)=>a+(+l.amount||0),0);
+  const monthOutflow=monthVP+monthLoansGiven;
+
+  const mInEl=document.getElementById('dash-month-in');
+  const mOutEl=document.getElementById('dash-month-out');
+  if(mInEl)mInEl.textContent=fmt(monthInflow);
+  if(mOutEl)mOutEl.textContent=fmt(monthOutflow);
+
+  // Vendor payables
+  const vendorPayables=DB.getActive('vendorpayables').filter(v=>v.status==='Pending');
+  const vpBal=vendorPayables.reduce((a,v)=>a+(+v.amount||0)-(+v.amountPaid||0),0);
+  const vpEl=document.getElementById('dash-vendor-payable');
+  const vpSubEl=document.getElementById('dash-vendor-payable-sub');
+  if(vpEl)vpEl.textContent=fmt(vpBal);
+  if(vpSubEl)vpSubEl.textContent=vendorPayables.length+' vendors';
+
+  // Gold with customers (active loan weight)
+  const goldCustEl=document.getElementById('dash-gold-cust');
+  if(goldCustEl)goldCustEl.textContent=rL.filter(l=>l.metal==='Gold').reduce((a,l)=>a+(+l.weight||0),0).toFixed(2)+'g';
 }
 
 // ═══════════════════════════════════════════
@@ -1244,27 +1407,35 @@ function showDailyClosing(){
   const udhars=DB.getActive('udhars');
   const buys=DB.get('buys').filter(b=>b.date===td);
   const payments=DB.get('payments').filter(p=>p.date===td);
-  const cashSales=sales.filter(s=>s.payMode==='Cash').reduce((a,s)=>a+(+s.amount||0),0);
-  const upiSales=sales.filter(s=>s.payMode==='UPI').reduce((a,s)=>a+(+s.amount||0),0);
-  const udharGiven=sales.filter(s=>s.payMode==='Udhar').reduce((a,s)=>a+(+s.amount||0),0);
+  // Split payment aware totals
+  const cashFromSales=sales.reduce((a,s)=>a+(+s.cashAmount||(s.payMode==='Cash'?+s.amount:0)||0),0);
+  const upiFromSales=sales.reduce((a,s)=>a+(+s.upiAmount||(s.payMode==='UPI'?+s.amount:0)||0),0);
+  const bankFromSales=sales.reduce((a,s)=>a+(+s.bankAmount||0),0);
+  const udharGiven=sales.reduce((a,s)=>a+(+s.udharAmount||(s.payMode==='Udhar'?+s.amount:0)||0),0);
+  const totalSales=sales.reduce((a,s)=>a+(+s.amount||0),0);
   const udharCollected=payments.filter(p=>p.refType==='udhars').reduce((a,p)=>a+(+p.amount||0),0);
   const loanGiven=loans.reduce((a,l)=>a+(+l.amount||0),0);
   const loanPayments=payments.filter(p=>p.refType==='loans').reduce((a,p)=>a+(+p.amount||0),0);
   const goldPurchased=buys.filter(b=>b.metal==='Gold').reduce((a,b)=>a+(+b.weight||0),0);
+  const silverPurchased=buys.filter(b=>b.metal==='Silver').reduce((a,b)=>a+(+b.weight||0),0);
+  const totalCashIn=cashFromSales+upiFromSales+bankFromSales+udharCollected+loanPayments;
   openModal(`
     <div class="form-title">📋 Daily Closing – ${fmtDate(td)}</div>
     <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:16px;margin-bottom:14px;">
-      <div class="closing-row"><span class="closing-label">Total Sales</span><span class="closing-value green">${fmt(cashSales+upiSales+udharGiven)}</span></div>
-      <div class="closing-row"><span class="closing-label">💵 Cash Received</span><span class="closing-value">${fmt(cashSales)}</span></div>
-      <div class="closing-row"><span class="closing-label">📱 UPI Received</span><span class="closing-value">${fmt(upiSales)}</span></div>
-      <div class="closing-row"><span class="closing-label">📋 Udhar Given</span><span class="closing-value red">${fmt(udharGiven)}</span></div>
+      <div class="closing-row"><span class="closing-label" style="font-weight:700;">Total Sales</span><span class="closing-value green">${fmt(totalSales)}</span></div>
+      <div class="closing-row"><span class="closing-label">💵 Cash Received</span><span class="closing-value">${fmt(cashFromSales)}</span></div>
+      <div class="closing-row"><span class="closing-label">📱 UPI Received</span><span class="closing-value">${fmt(upiFromSales)}</span></div>
+      <div class="closing-row"><span class="closing-label">🏦 Bank Transfer</span><span class="closing-value">${fmt(bankFromSales)}</span></div>
+      <div class="closing-row"><span class="closing-label">📋 Udhar Created</span><span class="closing-value red">${fmt(udharGiven)}</span></div>
+      <div style="border-top:1px dashed var(--border);margin:8px 0;"></div>
       <div class="closing-row"><span class="closing-label">✅ Udhar Collected</span><span class="closing-value green">${fmt(udharCollected)}</span></div>
-      <div class="closing-row"><span class="closing-label">🔒 Gold Loans Given</span><span class="closing-value red">${fmt(loanGiven)}</span></div>
-      <div class="closing-row"><span class="closing-label">💰 Loan Payments Received</span><span class="closing-value green">${fmt(loanPayments)}</span></div>
-      <div class="closing-row"><span class="closing-label">⚖️ Gold Purchased (g)</span><span class="closing-value">${goldPurchased.toFixed(2)}g</span></div>
+      <div class="closing-row"><span class="closing-label">🔒 Loans Given</span><span class="closing-value red">${fmt(loanGiven)}</span></div>
+      <div class="closing-row"><span class="closing-label">💰 Loan Payments</span><span class="closing-value green">${fmt(loanPayments)}</span></div>
+      <div class="closing-row"><span class="closing-label">⚖️ Gold Bought (g)</span><span class="closing-value">${goldPurchased.toFixed(2)}g</span></div>
+      ${silverPurchased>0?`<div class="closing-row"><span class="closing-label">⚖️ Silver Bought (g)</span><span class="closing-value">${silverPurchased.toFixed(2)}g</span></div>`:''}
       <div class="closing-row" style="margin-top:8px;padding-top:8px;border-top:2px solid var(--border);">
-        <span class="closing-label" style="font-weight:700;">Net Cash Flow</span>
-        <span class="closing-value ${(cashSales+upiSales+udharCollected+loanPayments-loanGiven)>=0?'green':'red'}">${fmt(cashSales+upiSales+udharCollected+loanPayments-loanGiven)}</span>
+        <span class="closing-label" style="font-weight:700;">Net Cash In</span>
+        <span class="closing-value ${totalCashIn>=loanGiven?'green':'red'}">${fmt(totalCashIn-loanGiven)}</span>
       </div>
     </div>
     <button class="cancel-btn" onclick="closeModal()" style="margin-top:0;">Close</button>
@@ -1281,26 +1452,77 @@ function renderSales(){
   if(salesFilter!=='all')s=s.filter(x=>x.payMode===salesFilter);
   const el=document.getElementById('sales-list');
   if(!s.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">🧾</div><p>No sales yet.</p></div>`;return;}
-  el.innerHTML=s.map(r=>`
-    <div class="list-item">
+  el.innerHTML=s.map(r=>{
+    const payBadgeClass=r.payMode==='Udhar'?'badge-red':r.payMode==='UPI'?'badge-blue':r.payMode==='Split'?'badge-purple':r.payMode==='Bank'?'badge-blue':'badge-green';
+    const payBreakdown=r.cashAmount||r.upiAmount||r.bankAmount||r.udharAmount?
+      `<div style="font-size:10px;color:var(--muted);margin-top:2px;">`+
+      [r.cashAmount>0?`💵${fmt(r.cashAmount)}`:'',r.upiAmount>0?`📱${fmt(r.upiAmount)}`:'',r.bankAmount>0?`🏦${fmt(r.bankAmount)}`:'',r.udharAmount>0?`📋${fmt(r.udharAmount)}`:''].filter(Boolean).join(' ')+
+      `</div>`:'';
+    return`<div class="list-item">
       <div class="list-item-left">
         <div class="list-item-name">${esc(r.customerName)}</div>
         ${custInfo(r)}
         <div class="list-item-sub">${esc(r.item)||'—'} &bull; ${r.metal} ${r.weight}g</div>
         <div class="list-item-detail">${fmtDate(r.date)} &bull; ${r.id}</div>
+        ${payBreakdown}
         ${r.notes?`<div class="list-item-notes">📝 ${esc(r.notes)}</div>`:''}
-        <span class="list-item-badge ${r.payMode==='Udhar'?'badge-red':r.payMode==='UPI'?'badge-blue':'badge-green'}">${r.payMode}</span>
+        <span class="list-item-badge ${payBadgeClass}">${r.payMode}</span>
       </div>
       <div class="list-item-right">
         <div class="list-item-amount">${fmt(r.amount)}</div>
-        <br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;" onclick="editRecord('sales','${r.id}')">✏️ Edit</button><br><button class="pay-btn" style="background:var(--muted);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="showEditHistory('sales','${r.id}')">📋 Log</button>
+        <br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;" onclick="viewRecord('sales','${r.id}')">👁️ View</button>
+        <br><button class="pay-btn" style="background:var(--gold-dark);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="editRecord('sales','${r.id}')">✏️ Edit</button>
+        <br><button class="pay-btn" style="background:var(--muted);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="showEditHistory('sales','${r.id}')">📋 Log</button>
         <br><button class="delete-btn" onclick="deleteSale('${r.id}')">Delete</button>
       </div>
-    </div>`).join('');
+    </div>`;}).join('');
 }
 // ═══════════════════════════════════════════
-// EDIT RECORDS
+// VIEW (READ-ONLY) + EDIT RECORDS
 // ═══════════════════════════════════════════
+function viewRecord(type, id){
+  const items = DB.get(type);
+  const r = items.find(x=>x.id===id);
+  if(!r){ showToast('Record not found'); return; }
+
+  const row=(label,val)=>`<div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;"><span style="color:var(--muted);">${label}</span><span style="font-weight:700;color:var(--text);text-align:right;max-width:60%;">${esc(String(val||'—'))}</span></div>`;
+
+  let title='', fields='';
+  if(type==='sales'){
+    title='🧾 Sale Details';
+    fields=row('Date',fmtDate(r.date))+row('Customer',r.customerName)+row('S/o',r.fatherName)+row('Village',r.village)+row('Mobile',r.mobile)+row('Item',r.item)+row('Metal',r.metal)+row('Weight',r.weight+'g')+row('Total Amount',fmt(r.amount))+
+      (r.cashAmount>0?row('💵 Cash',fmt(r.cashAmount)):'')+
+      (r.upiAmount>0?row('📱 UPI',fmt(r.upiAmount)):'')+
+      (r.bankAmount>0?row('🏦 Bank Transfer',fmt(r.bankAmount)):'')+
+      (r.udharAmount>0?row('📋 Udhar',fmt(r.udharAmount)):'')+
+      row('Payment Mode',r.payMode)+row('Notes',r.notes);
+  } else if(type==='loans'){
+    title='🔒 Loan Details';
+    const interest=r.status==='Running'?calcInt(+r.amount,+r.roi,r.date):0;
+    fields=row('Date',fmtDate(r.date))+row('Customer',r.customerName)+row('S/o',r.fatherName)+row('Village',r.village)+row('Mobile',r.mobile)+row('Item Pledged',r.item)+row('Metal',r.metal)+row('Weight',r.weight+'g')+row('Loan Amount',fmt(r.amount))+row('Interest Rate',r.roi+'%/month')+row('Packet No.',r.packetNo)+row('Status',r.status)+row('Packet Status',r.packetStatus)+row('Amount Paid',fmt(+r.amountPaid||0))+row('Interest Till Today',fmt(interest))+row('Total Due',fmt((+r.amount+interest)-(+r.amountPaid||0)))+row('Notes',r.notes);
+  } else if(type==='buys'){
+    title='⚖️ Purchase Details';
+    fields=row('Date',fmtDate(r.date))+row('Customer',r.customerName)+row('S/o',r.fatherName)+row('Village',r.village)+row('Mobile',r.mobile)+row('Item',r.item)+row('Metal',r.metal)+row('Weight',r.weight+'g')+row('Amount Paid',fmt(r.amount))+row('Notes',r.notes);
+  } else if(type==='vendorpurchases'){
+    title='📦 Vendor Purchase Details';
+    fields=row('Date',fmtDate(r.date))+row('Vendor',r.vendorName)+row('Metal',r.metal)+row('Weight',r.weight+'g')+row('Rate/g',fmt(r.ratePerGram))+row('Total Amount',fmt(r.totalAmount))+
+      (r.cashPaid>0?row('💵 Cash Paid',fmt(r.cashPaid)):'')+
+      (r.upiPaid>0?row('📱 UPI Paid',fmt(r.upiPaid)):'')+
+      (r.bankPaid>0?row('🏦 Bank Paid',fmt(r.bankPaid)):'')+
+      (r.udharBalance>0?row('📋 Udhar Balance',fmt(r.udharBalance)):'')+
+      row('Notes',r.notes);
+  } else if(type==='sahukars'){
+    title='🏦 Sahukar Entry Details';
+    const interest=r.status==='Running'?calcInt(+r.amount,+r.roi,r.date):0;
+    fields=row('Date',fmtDate(r.date))+row('Sahukar',r.sahukarName)+row('Gold Given',r.goldWeight+'g')+row('Silver Given',(r.silverWeight||0)+'g')+row('Amount Borrowed',fmt(r.amount))+row('Interest Rate',r.roi+'%/month')+row('Interest Till Today',fmt(interest))+row('Linked Packets',r.linkedPackets||'—')+row('Status',r.status)+row('Notes',r.notes);
+  }
+
+  openModal(`<div class="form-title">${title}</div>
+    <div style="background:var(--bg);border-radius:14px;padding:4px 14px;margin-bottom:16px;">${fields}</div>
+    <button class="submit-btn" onclick="editRecord('${type}','${id}')">✏️ Edit This Record</button>
+    <button class="cancel-btn" onclick="closeModal()">Close</button>`);
+}
+
 function editRecord(type, id){
   const items = DB.get(type);
   const r = items.find(x=>x.id===id);
@@ -1500,8 +1722,9 @@ function renderLoans(){
       <div class="list-item-right">
         <div class="list-item-amount">${fmt(l.amount)}</div>
         <span class="list-item-badge ${l.status==='Running'?'badge-red':'badge-green'}">${l.status}</span>
+        <br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;margin-top:4px;" onclick="viewRecord('loans','${l.id}')">👁️ View</button>
         ${l.status==='Running'?`<br><button class="part-pay-btn" onclick="openPartialPayment('loans','${l.id}')">💰 Pay</button><br><button class="close-loan-btn" onclick="closeLoan('${l.id}')">Close</button>`:''}
-        <br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;margin-top:4px;" onclick="editRecord('loans','${l.id}')">✏️ Edit</button><br><button class="pay-btn" style="background:var(--muted);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="showEditHistory('loans','${l.id}')">📋 Log</button>
+        <br><button class="pay-btn" style="background:var(--gold-dark);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="editRecord('loans','${l.id}')">✏️ Edit</button><br><button class="pay-btn" style="background:var(--muted);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="showEditHistory('loans','${l.id}')">📋 Log</button>
       </div>
     </div>`;
   }).join('');
@@ -1557,7 +1780,7 @@ function showSubScreen(type){
       ${s.length?s.map(r=>{
         const interest=r.status==='Running'?calcInt(+r.amount,+r.roi,r.date):0;
         const pkts=r.linkedPackets?r.linkedPackets.split(',').filter(Boolean):[];
-        return`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.sahukarName)}</div><div class="list-item-sub">${r.goldWeight}g gold &bull; ${r.roi}%/mo &bull; ${daysB(r.date,today())} days</div><div class="list-item-detail">${fmtDate(r.date)} &bull; ${r.id}</div>${pkts.length?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">Packets: ${pkts.join(', ')}</div>`:''} ${r.status==='Running'?`<div style="font-size:12px;color:var(--red);margin-top:3px;">Interest: ${fmt(interest)}</div>`:''} ${r.notes?`<div class="list-item-notes">📝 ${esc(r.notes)}</div>`:''}<span class="list-item-badge ${r.status==='Running'?'badge-red':'badge-green'}">${r.status}</span></div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div>${r.status==='Running'?`<br><button class="close-loan-btn" onclick="closeSahukar('${r.id}')">Close</button>`:''}</div></div>`;
+        return`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.sahukarName)}</div><div class="list-item-sub">${r.goldWeight}g gold ${(r.silverWeight>0)?r.silverWeight+'g silver':''} &bull; ${r.roi}%/mo &bull; ${daysB(r.date,today())} days</div><div class="list-item-detail">${fmtDate(r.date)} &bull; ${r.id}</div>${pkts.length?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">Packets: ${pkts.join(', ')}</div>`:''} ${r.status==='Running'?`<div style="font-size:12px;color:var(--red);margin-top:3px;">Interest: ${fmt(interest)}</div>`:''} ${r.notes?`<div class="list-item-notes">📝 ${esc(r.notes)}</div>`:''}<span class="list-item-badge ${r.status==='Running'?'badge-red':'badge-green'}">${r.status}</span></div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div><br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="viewRecord('sahukars','${r.id}')">👁️ View</button>${r.status==='Running'?`<br><button class="pay-btn" style="background:var(--gold-dark);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="editSahukar('${r.id}')">✏️ Edit</button><br><button class="close-loan-btn" onclick="closeSahukar('${r.id}')">Close</button>`:''}</div></div>`;
       }).join(''):'<div class="empty-state"><div class="empty-icon">🏦</div><p>No entries yet.</p></div>'}`;
   }
 
@@ -1638,7 +1861,9 @@ function showSubScreen(type){
         <div class="stat-card"><div class="stat-label">🥈 Silver Net Stock</div><div class="stat-value blue">${silverNet.toFixed(2)}g</div><div class="stat-sub">After sales</div></div>
       </div>
       <div class="history-header">Purchase History (${vps.length})</div>
-      ${vps.length?vps.map(v=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(v.vendorName)}</div><div class="list-item-sub">${v.metal} &bull; ${v.weight}g &bull; ₹${v.ratePerGram}/g</div><div class="list-item-detail">${fmtDate(v.date)} &bull; ${v.id}</div>${v.notes?`<div class="list-item-notes">📝 ${esc(v.notes)}</div>`:''}</div><div class="list-item-right"><div class="list-item-amount">${fmt(v.totalAmount)}</div><button class="delete-btn" onclick="deleteVendorPurchase('${v.id}')">Delete</button></div></div>`).join(''):'<div class="empty-state"><div class="empty-icon">📦</div><p>No purchases yet.</p></div>'}`;
+      ${vps.length?vps.map(v=>{
+        const payInfo=[v.cashPaid>0?`💵${fmt(v.cashPaid)}`:'',v.upiPaid>0?`📱${fmt(v.upiPaid)}`:'',v.bankPaid>0?`🏦${fmt(v.bankPaid)}`:'',v.udharBalance>0?`📋${fmt(v.udharBalance)} due`:''].filter(Boolean).join(' ');
+        return`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(v.vendorName)}</div><div class="list-item-sub">${v.metal} &bull; ${v.weight}g &bull; ₹${v.ratePerGram}/g</div><div class="list-item-detail">${fmtDate(v.date)} &bull; ${v.id}</div>${payInfo?`<div style="font-size:10px;color:var(--muted);margin-top:2px;">${payInfo}</div>`:''} ${v.udharBalance>0?`<span class="list-item-badge badge-red">₹${v.udharBalance} Payable</span>`:''} ${v.notes?`<div class="list-item-notes">📝 ${esc(v.notes)}</div>`:''}</div><div class="list-item-right"><div class="list-item-amount">${fmt(v.totalAmount)}</div><br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="viewRecord('vendorpurchases','${v.id}')">👁️ View</button><br><button class="delete-btn" onclick="deleteVendorPurchase('${v.id}')">Delete</button></div></div>`;}).join(''):'<div class="empty-state"><div class="empty-icon">📦</div><p>No purchases yet.</p></div>'}`;
   }
   else if(type==='search'){
     html=`<div class="form-title">🔍 Search Customer</div>
@@ -1740,6 +1965,62 @@ function markUdharPaid(id){
   DB.set('udhars',u);showToast('✅ Udhar fully paid!');renderDashboard();showSubScreen('udhar');
   updateSheetTab('Udhars').catch(()=>{});
 }
+function editSahukar(id){
+  const sahukars=DB.get('sahukars');
+  const r=sahukars.find(x=>x.id===id);
+  if(!r){showToast('Record not found');return;}
+  if(r.status==='Closed'){showToast('⚠️ Cannot edit a closed sahukar entry');return;}
+  const inShopLoans=DB.getActive('loans').filter(l=>l.status==='Running'&&(l.packetStatus==='In Shop'||r.linkedPackets.split(',').includes(l.packetNo)));
+  const currentPkts=(r.linkedPackets||'').split(',').filter(Boolean);
+  openModal(`<div class="form-title">✏️ Edit Sahukar Entry</div>
+    <div class="field"><label>Date</label><input type="date" id="es-date" value="${r.date}"></div>
+    <div class="field"><label>Sahukar Name</label><input type="text" id="es-name" value="${esc(r.sahukarName)}"></div>
+    <div class="field-row">
+      <div class="field"><label>Gold Given (g)</label><input type="number" id="es-gold" value="${r.goldWeight}" step="0.01"></div>
+      <div class="field"><label>Silver Given (g)</label><input type="number" id="es-silver" value="${r.silverWeight||0}" step="0.01"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Amount (₹)</label><input type="number" id="es-amount" value="${r.amount}"></div>
+      <div class="field"><label>Interest (%/mo)</label><input type="number" id="es-roi" value="${r.roi}" step="0.1"></div>
+    </div>
+    <div class="field"><label>Linked Packets (tap to select/deselect)</label>
+      <select id="es-packets" multiple style="height:110px;font-size:14px;">
+        ${inShopLoans.map(l=>`<option value="${l.packetNo}" ${currentPkts.includes(l.packetNo)?'selected':''}>${l.packetNo} | ${l.metal} | ${l.weight}g | ${esc(l.customerName)}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field"><label>Notes</label><textarea id="es-notes">${esc(r.notes||'')}</textarea></div>
+    <button class="submit-btn" onclick="saveEditSahukar('${id}')">✓ Save Changes</button>
+    <button class="cancel-btn" onclick="closeModal()">Cancel</button>`);
+}
+function saveEditSahukar(id){
+  const sahukars=DB.get('sahukars');
+  const r=sahukars.find(x=>x.id===id);
+  if(!r)return;
+  const prev=JSON.parse(JSON.stringify(r));
+  const newPkts=Array.from(document.getElementById('es-packets').selectedOptions).map(o=>o.value);
+  const oldPkts=(r.linkedPackets||'').split(',').filter(Boolean);
+  // Return removed packets to In Shop
+  const removedPkts=oldPkts.filter(p=>!newPkts.includes(p));
+  const addedPkts=newPkts.filter(p=>!oldPkts.includes(p));
+  const loans=DB.get('loans');
+  removedPkts.forEach(p=>{const l=loans.find(x=>x.packetNo===p);if(l)l.packetStatus='In Shop';});
+  addedPkts.forEach(p=>{const l=loans.find(x=>x.packetNo===p);if(l)l.packetStatus='With Sahukar';});
+  DB.set('loans',loans);
+  r.date=gv('es-date')||r.date;
+  r.sahukarName=gv('es-name')||r.sahukarName;
+  r.goldWeight=gf('es-gold');
+  r.silverWeight=gf('es-silver');
+  r.amount=gf('es-amount')||r.amount;
+  r.roi=gf('es-roi')||r.roi;
+  r.linkedPackets=newPkts.join(',');
+  r.notes=gv('es-notes');
+  DB.set('sahukars',sahukars);
+  logEdit('sahukars',id,prev,r);
+  closeModal();showToast('✅ Sahukar entry updated!');renderDashboard();
+  showSubScreen('sahukar');
+  updateSheetTab('Sahukars').catch(()=>{});
+  updateSheetTab('Loans').catch(()=>{});
+}
 function closeSahukar(id){
   if(!confirm('Close entry?'))return;
   const s=DB.get('sahukars'),item=s.find(x=>x.id===id);
@@ -1811,6 +2092,8 @@ function buildReportsHTML(){
   const totalUdharBal=pendUdhar.reduce((a,u)=>a+(+u.amount||0)-(+u.amountPaid||0),0);
   const totalSahukarDue=runSahukars.reduce((a,s)=>a+(+s.amount||0),0);
   const totalSahukarInt=runSahukars.reduce((a,s)=>a+calcInt(+s.amount,+s.roi,s.date),0);
+  const allVendorPayables=DB.getActive('vendorpayables').filter(v=>v.status==='Pending');
+  const totalVendorPayable=allVendorPayables.reduce((a,v)=>a+(+v.amount||0)-(+v.amountPaid||0),0);
 
   // ── Build HTML
   return `<div class="form-title">📊 Reports</div>
@@ -1863,6 +2146,8 @@ function buildReportsHTML(){
         <div class="stat-card"><div class="stat-label">Interest Earned</div><div class="stat-value green">${fmt(totalIntEarned)}</div><div class="stat-sub">Till today</div></div>
         <div class="stat-card"><div class="stat-label">Udhar Pending</div><div class="stat-value red">${fmt(totalUdharBal)}</div><div class="stat-sub">${pendUdhar.length} customers</div></div>
         <div class="stat-card"><div class="stat-label">Sahukar Due</div><div class="stat-value red">${fmt(totalSahukarDue)}</div><div class="stat-sub">Int: ${fmt(totalSahukarInt)}</div></div>
+        <div class="stat-card"><div class="stat-label">🟡 Vendor Payable</div><div class="stat-value red">${fmt(totalVendorPayable)}</div><div class="stat-sub">${allVendorPayables.length} vendors</div></div>
+        <div class="stat-card"><div class="stat-label">📊 Net Receivable</div><div class="stat-value green">${fmt(totalLoanBal+totalUdharBal+totalIntEarned)}</div><div class="stat-sub">Loans+Udhar+Int</div></div>
       </div>
       <div class="report-card">
         <div class="report-card-title">Active Gold Loans</div>
@@ -1935,6 +2220,7 @@ function buildReportsHTML(){
       <button class="export-btn" onclick="exportCSV('vendorpurchases')">⬇️ Vendor Purchases CSV</button>
       <button class="export-btn" onclick="exportCSV('customers')">⬇️ Customer List CSV</button>
       <button class="export-btn" onclick="exportCSV('payments')">⬇️ Payments History CSV</button>
+      <button class="export-btn" onclick="exportCSV('vendorpayables')">⬇️ Vendor Payables CSV</button>
 
       <!-- DANGER ZONE -->
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
@@ -1958,7 +2244,7 @@ function switchReportTab(tabId, btn){
 // BACKUP SYSTEM
 // ═══════════════════════════════════════════
 const BACKUP_MODULES = ['sales','loans','buys','udhars','sahukars','customers',
-  'sahukarmaster','payments','vendors','vendorpurchases','edithistory'];
+  'sahukarmaster','payments','vendors','vendorpurchases','vendorpayables','edithistory'];
 
 function collectAllData(){
   const backup = {
@@ -2139,7 +2425,7 @@ function exportCSV(type){
   const a=document.createElement('a');a.href=url;a.download=`SJJ_${type}_${today()}.csv`;a.click();URL.revokeObjectURL(url);showToast('✅ CSV downloaded!');
 }
 function showDeletedRecords(){
-  const allModules = ['sales','loans','buys','udhars','sahukars','vendors','vendorpurchases'];
+  const allModules = ['sales','loans','buys','udhars','sahukars','vendors','vendorpurchases','vendorpayables'];
   let html = '<div class="form-title">🗑️ Deleted Records</div>';
   let totalDeleted = 0;
   allModules.forEach(mod => {
@@ -2172,7 +2458,7 @@ function restoreRecord(mod, id){
   renderDashboard();
 }
 
-function clearAllData(){['sales','loans','buys','udhars','sahukars','customers','sahukarmaster','payments','vendors','vendorpurchases','edithistory'].forEach(k=>localStorage.removeItem('sjj_'+k));closeModal();renderDashboard();showToast('🗑️ All data cleared');}
+function clearAllData(){['sales','loans','buys','udhars','sahukars','customers','sahukarmaster','payments','vendors','vendorpurchases','vendorpayables','edithistory'].forEach(k=>localStorage.removeItem('sjj_'+k));closeModal();renderDashboard();showToast('🗑️ All data cleared');}
 
 // ═══════════════════════════════════════════
 // INIT
