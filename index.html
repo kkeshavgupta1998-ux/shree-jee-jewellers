@@ -199,6 +199,11 @@ input[type="date"]{color:var(--text);}
 
 <!-- MAIN APP -->
 <div id="main-app" style="display:none;">
+<!-- RE-LOGIN BANNER -->
+<div id="relogin-banner" style="display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#C0392B;color:#fff;padding:12px 16px;z-index:500;align-items:center;justify-content:space-between;gap:10px;">
+  <div style="font-size:13px;font-weight:600;">🔒 Session expired. Please reconnect.</div>
+  <button onclick="relogin()" style="background:#fff;color:#C0392B;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">Reconnect</button>
+</div>
 <div class="topbar">
   <div style="font-size:22px;">💍</div>
   <div style="flex:1;margin-left:10px;">
@@ -342,7 +347,21 @@ const SHEET_HEADERS={
 let accessToken=null, spreadsheetId=null;
 const DB={
   get:k=>{try{return JSON.parse(localStorage.getItem('sjj_'+k)||'[]');}catch(e){return[];}},
+  // getActive filters out soft-deleted records
+  getActive:k=>{try{return (JSON.parse(localStorage.getItem('sjj_'+k)||'[]')).filter(r=>!r.deleted);}catch(e){return[];}},
+  // getAll returns everything including deleted (for backup/restore)
+  getAll:k=>{try{return JSON.parse(localStorage.getItem('sjj_'+k)||'[]');}catch(e){return[];}},
   set:(k,v)=>{try{localStorage.setItem('sjj_'+k,JSON.stringify(v));}catch(e){}},
+  // softDelete marks record as deleted with timestamp
+  softDelete:(k,id)=>{
+    try{
+      const items=JSON.parse(localStorage.getItem('sjj_'+k)||'[]');
+      const item=items.find(x=>x.id===id);
+      if(item){item.deleted=true;item.deletedAt=Date.now();}
+      localStorage.setItem('sjj_'+k,JSON.stringify(items));
+      return item;
+    }catch(e){return null;}
+  },
   nextId:p=>{const i=DB.get(p),max=Math.max(0,...i.map(x=>parseInt((x.id||'0').replace(/\D/g,''))||0));return p.toUpperCase()[0]+String(max+1).padStart(3,'0');},
   nextPacket:()=>{const a=[...DB.get('loans').map(l=>l.packetNo),...DB.get('sahukars').map(s=>s.linkedPackets||'').join(',').split(',').filter(Boolean)];const max=Math.max(0,...a.map(p=>parseInt((p||'0').replace(/\D/g,''))||0));return'P'+String(max+1).padStart(3,'0');}
 };
@@ -364,50 +383,157 @@ function showToast(msg,dur=2400){const t=document.getElementById('toast');t.text
 // AUTH
 // ═══════════════════════════════════════════
 let tokenClient;
+let tokenExpiry = 0; // timestamp when token expires
+
 function signIn(){
-  tokenClient=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPES,callback:async(resp)=>{
-    if(resp.error){showToast('❌ Sign in failed');return;}
-    accessToken=resp.access_token;localStorage.setItem('sjj_token',accessToken);
-    await initAfterSignIn();
-  }});
-  tokenClient.requestAccessToken();
+  tokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:CLIENT_ID,
+    scope:SCOPES,
+    callback:async(resp)=>{
+      if(resp.error){showToast('❌ Sign in failed: '+resp.error);return;}
+      accessToken=resp.access_token;
+      // Google tokens last 3600 seconds — store expiry time (55 min to be safe)
+      tokenExpiry = Date.now() + (55 * 60 * 1000);
+      localStorage.setItem('sjj_token',accessToken);
+      localStorage.setItem('sjj_token_expiry', tokenExpiry);
+      spreadsheetId = localStorage.getItem('sjj_sheetId');
+      await initAfterSignIn();
+    }
+  });
+  tokenClient.requestAccessToken({prompt:''});
 }
+
+async function refreshTokenIfNeeded(){
+  // If token is expired or expiring in next 2 minutes, get a new one silently
+  if(Date.now() > tokenExpiry - (2*60*1000)){
+    return new Promise((resolve)=>{
+      try{
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id:CLIENT_ID,
+          scope:SCOPES,
+          callback:(resp)=>{
+            if(resp.error){ resolve(false); return; }
+            accessToken=resp.access_token;
+            tokenExpiry = Date.now() + (55*60*1000);
+            localStorage.setItem('sjj_token',accessToken);
+            localStorage.setItem('sjj_token_expiry',tokenExpiry);
+            resolve(true);
+          }
+        });
+        tokenClient.requestAccessToken({prompt:''});
+      }catch(e){ resolve(false); }
+    });
+  }
+  return true;
+}
+
 function signOut(){
   if(!confirm('Sign out?'))return;
-  if(accessToken)google.accounts.oauth2.revoke(accessToken);
-  accessToken=null;spreadsheetId=null;
-  localStorage.removeItem('sjj_token');localStorage.removeItem('sjj_sheetId');
+  if(accessToken) try{google.accounts.oauth2.revoke(accessToken);}catch(e){}
+  accessToken=null;spreadsheetId=null;tokenExpiry=0;
+  localStorage.removeItem('sjj_token');
+  localStorage.removeItem('sjj_token_expiry');
+  localStorage.removeItem('sjj_sheetId');
   document.getElementById('main-app').style.display='none';
   document.getElementById('login-screen').style.display='flex';
 }
+
 async function tryRestoreSession(){
-  const saved=localStorage.getItem('sjj_token'),savedSheet=localStorage.getItem('sjj_sheetId');
-  if(saved){accessToken=saved;spreadsheetId=savedSheet;await initAfterSignIn(true);}
-  else{document.getElementById('login-screen').style.display='flex';}
+  const saved=localStorage.getItem('sjj_token');
+  const savedExpiry=parseInt(localStorage.getItem('sjj_token_expiry')||'0');
+  const savedSheet=localStorage.getItem('sjj_sheetId');
+  if(saved){
+    accessToken=saved;
+    tokenExpiry=savedExpiry;
+    spreadsheetId=savedSheet;
+    await initAfterSignIn(true);
+  } else {
+    document.getElementById('login-screen').style.display='flex';
+  }
 }
+
 async function initAfterSignIn(restored=false){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('main-app').style.display='block';
   document.getElementById('topbarDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
   setSyncStatus('syncing','Connecting...');
-  try{await ensureSpreadsheet();await loadAllFromSheets();setSyncStatus('ok','Synced');showToast(restored?'✅ Session restored':'✅ Connected!');}
-  catch(e){setSyncStatus('error','Offline');showToast('⚠️ Working offline');}
+  try{
+    // Try to refresh token if needed before connecting
+    await refreshTokenIfNeeded();
+    await ensureSpreadsheet();
+    await loadAllFromSheets();
+    setSyncStatus('ok','Synced');
+    showToast(restored?'✅ Session restored':'✅ Connected!');
+  } catch(e){
+    // If 401, token has expired — show re-login prompt
+    if(e.message&&e.message.includes('401')){
+      setSyncStatus('error','Login expired');
+      showReloginBanner();
+    } else {
+      setSyncStatus('error','Offline');
+      showToast('⚠️ Working offline – data saved locally');
+    }
+  }
   renderDashboard();
+}
+
+function showReloginBanner(){
+  const banner = document.getElementById('relogin-banner');
+  if(banner) banner.style.display='flex';
+}
+function hideReloginBanner(){
+  const banner = document.getElementById('relogin-banner');
+  if(banner) banner.style.display='none';
+}
+async function relogin(){
+  hideReloginBanner();
+  setSyncStatus('syncing','Reconnecting...');
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id:CLIENT_ID,
+    scope:SCOPES,
+    callback:async(resp)=>{
+      if(resp.error){setSyncStatus('error','Failed');showToast('❌ Re-login failed');return;}
+      accessToken=resp.access_token;
+      tokenExpiry=Date.now()+(55*60*1000);
+      localStorage.setItem('sjj_token',accessToken);
+      localStorage.setItem('sjj_token_expiry',tokenExpiry);
+      try{
+        await ensureSpreadsheet();
+        await loadAllFromSheets();
+        setSyncStatus('ok','Synced');
+        showToast('✅ Reconnected!');
+        renderDashboard();
+      }catch(e){
+        setSyncStatus('error','Failed');
+        showToast('❌ Could not reconnect');
+      }
+    }
+  });
+  tokenClient.requestAccessToken({prompt:''});
 }
 
 // ═══════════════════════════════════════════
 // SHEETS API
 // ═══════════════════════════════════════════
 async function sheetsReq(method,path,body=null){
+  // Auto-refresh token if expired before making request
+  await refreshTokenIfNeeded();
   const opts={method,headers:{'Authorization':'Bearer '+accessToken,'Content-Type':'application/json'}};
   if(body)opts.body=JSON.stringify(body);
   const r=await fetch('https://sheets.googleapis.com/v4/spreadsheets'+path,opts);
+  if(r.status===401){
+    // Token rejected — show re-login banner
+    setSyncStatus('error','Login expired');
+    showReloginBanner();
+    throw new Error('401 Unauthorized');
+  }
   if(!r.ok)throw new Error(await r.text());
   return r.json();
 }
 async function ensureSpreadsheet(){
   if(!spreadsheetId)spreadsheetId=localStorage.getItem('sjj_sheetId');
   if(spreadsheetId){try{await sheetsReq('GET','/'+spreadsheetId+'?fields=spreadsheetId');return;}catch(e){spreadsheetId=null;}}
+  await refreshTokenIfNeeded();
   const search=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='Shree Jee Jewellers Data' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false&fields=files(id)`,{headers:{'Authorization':'Bearer '+accessToken}});
   const found=await search.json();
   if(found.files&&found.files.length>0){spreadsheetId=found.files[0].id;localStorage.setItem('sjj_sheetId',spreadsheetId);return;}
@@ -454,13 +580,36 @@ function setSyncStatus(state,label){
 async function manualSync(){
   if(!accessToken){showToast('Not signed in');return;}
   setSyncStatus('syncing','Syncing...');
-  try{await ensureSpreadsheet();await loadAllFromSheets();setSyncStatus('ok','Synced');showToast('✅ Synced!');renderDashboard();if(currentScreen==='sales')renderSales();if(currentScreen==='loans')renderLoans();}
-  catch(e){setSyncStatus('error','Failed');showToast('❌ Sync failed');}
+  try{
+    await refreshTokenIfNeeded();
+    await ensureSpreadsheet();
+    await loadAllFromSheets();
+    setSyncStatus('ok','Synced');
+    hideReloginBanner();
+    showToast('✅ Synced!');
+    renderDashboard();
+    if(currentScreen==='sales')renderSales();
+    if(currentScreen==='loans')renderLoans();
+  }catch(e){
+    if(e.message&&e.message.includes('401')){setSyncStatus('error','Login expired');showReloginBanner();}
+    else{setSyncStatus('error','Failed');showToast('❌ Sync failed – check internet');}
+  }
 }
 async function syncRecord(tabName,record){
   setSyncStatus('syncing','Saving...');
-  try{await appendRowToSheet(tabName,record);setSyncStatus('ok','Synced ✓');}
-  catch(e){setSyncStatus('error','Offline');showToast('📱 Saved locally');}
+  try{
+    await appendRowToSheet(tabName,record);
+    setSyncStatus('ok','Synced ✓');
+    hideReloginBanner();
+  } catch(e){
+    if(e.message&&e.message.includes('401')){
+      setSyncStatus('error','Login expired');
+      showReloginBanner();
+    } else {
+      setSyncStatus('error','Offline');
+      showToast('📱 Saved locally – will sync when online');
+    }
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -644,7 +793,7 @@ function openForm(type){
       <button class="cancel-btn" onclick="closeModal()">Cancel</button>`;
   }
   else if(type==='sahukar'){
-    const inShopLoans=DB.get('loans').filter(l=>l.status==='Running'&&l.packetStatus==='In Shop');
+    const inShopLoans=DB.getActive('loans').filter(l=>l.status==='Running'&&l.packetStatus==='In Shop');
     html=`<div class="form-title">🏦 Sahukar Borrowing</div>
       <div class="field"><label>Date *</label><input type="date" id="f-date" value="${t}"></div>
       <div class="field"><label>Sahukar *</label>
@@ -686,7 +835,7 @@ function openForm(type){
       <button class="cancel-btn" onclick="closeModal()">Cancel</button>`;
   }
   else if(type==='vendor-purchase'){
-    const vendors=DB.get('vendors');
+    const vendors=DB.getActive('vendors');
     const vendorOpts=vendors.length?`<option value="">Select Vendor...</option>`+vendors.map(v=>`<option value="${v.id}">${esc(v.name)} – ${esc(v.city||'')}</option>`).join(''):`<option value="">-- Add vendors first --</option>`;
     html=`<div class="form-title">📦 Vendor Purchase</div>
       <div class="field"><label>Date *</label><input type="date" id="vp-date" value="${t}"></div>
@@ -735,6 +884,7 @@ function onSahukarSelect(sel){
 function saveSale(){
   const name=gv('f-name'),amount=gf('f-amount');
   if(!name||!amount){showToast('⚠️ Name and Amount required');return;}
+  if(amount<=0){showToast('⚠️ Amount must be greater than 0');return;}
   const cid=saveCustomerIfNew(name,gv('f-father'),gv('f-mobile'),gv('f-village'));
   const s={id:DB.nextId('sales'),date:gv('f-date'),customerId:cid,customerName:name,fatherName:gv('f-father'),village:gv('f-village'),mobile:gv('f-mobile'),item:gv('f-item'),metal:document.getElementById('f-metal').value,weight:gf('f-weight'),amount,payMode:document.getElementById('f-pay').value,notes:gv('f-notes'),createdAt:Date.now()};
   const sales=DB.get('sales');sales.push(s);DB.set('sales',sales);
@@ -745,6 +895,11 @@ function saveSale(){
   }
   closeModal();showToast('✅ Sale saved! '+s.id);renderDashboard();if(currentScreen==='sales')renderSales();
   syncRecord('Sales',s);
+  // Also sync udhar if created
+  if(s.payMode==='Udhar'){
+    const newUdhar=DB.get('udhars').find(u=>u.saleId===s.id);
+    if(newUdhar) syncRecord('Udhars',newUdhar);
+  }
 }
 function saveBuy(){
   const name=gv('f-name'),amount=gf('f-amount');
@@ -760,6 +915,7 @@ function isPacketDuplicate(pkt){
 function saveLoan(){
   const name=gv('f-name'),amount=gf('f-amount'),pkt=gv('f-packet');
   if(!name||!amount||!pkt){showToast('⚠️ Name, Amount and Packet No. required');return;}
+  if(amount<=0){showToast('⚠️ Loan amount must be greater than 0');return;}
   if(isPacketDuplicate(pkt)){showToast('⚠️ Packet '+pkt+' already active! Use a different number.');return;}
   const cid=saveCustomerIfNew(name,gv('f-father'),gv('f-mobile'),gv('f-village'));
   const l={id:DB.nextId('loans'),date:gv('f-date'),customerId:cid,customerName:name,fatherName:gv('f-father'),village:gv('f-village'),mobile:gv('f-mobile'),item:gv('f-item'),metal:document.getElementById('f-metal').value,weight:gf('f-weight'),amount,amountPaid:0,roi:gf('f-roi')||2,packetNo:pkt,status:'Running',packetStatus:'In Shop',notes:gv('f-notes'),createdAt:Date.now()};
@@ -771,9 +927,16 @@ function saveSahukar(){
   if(!name||!amount){showToast('⚠️ Please select sahukar and enter amount');return;}
   const sel=document.getElementById('f-packet');
   const linked=Array.from(sel.selectedOptions).map(o=>o.value);
+  // Validate all selected packets are still In Shop
+  const loans=DB.get('loans');
+  const invalidPkts=linked.filter(pkt=>{
+    const loan=loans.find(l=>l.packetNo===pkt);
+    return !loan||loan.packetStatus!=='In Shop'||loan.status!=='Running';
+  });
+  if(invalidPkts.length){showToast('⚠️ Packets already pledged or not available: '+invalidPkts.join(', '));return;}
   const e={id:DB.nextId('sahukars'),date:gv('f-date'),sahukarId,sahukarName:name,goldWeight:gf('f-weight'),amount,roi:gf('f-roi')||1.5,linkedPackets:linked.join(','),status:'Running',notes:gv('f-notes'),createdAt:Date.now()};
   const sahukars=DB.get('sahukars');sahukars.push(e);DB.set('sahukars',sahukars);
-  if(linked.length){const loans=DB.get('loans');loans.forEach(l=>{if(linked.includes(l.packetNo))l.packetStatus='With Sahukar';});DB.set('loans',loans);}
+  if(linked.length){loans.forEach(l=>{if(linked.includes(l.packetNo))l.packetStatus='With Sahukar';});DB.set('loans',loans);}
   closeModal();showToast('✅ Sahukar entry saved!');renderDashboard();syncRecord('Sahukars',e);
 }
 function saveSahukarMaster(){
@@ -844,7 +1007,17 @@ function openPartialPayment(type,id){
 }
 function savePartialPayment(type,id){
   const payAmt=gf('pp-amount');
-  if(!payAmt){showToast('⚠️ Enter payment amount');return;}
+  if(!payAmt||payAmt<=0){showToast('⚠️ Enter a valid payment amount');return;}
+  // Prevent overpayment
+  const _items=DB.get(type);
+  const _item=_items.find(x=>x.id===id);
+  if(_item){
+    const _interest=type==='loans'?calcInt(+_item.amount,+_item.roi,_item.date):0;
+    const _totalPayable=type==='loans'?(+_item.amount+_interest):(+_item.amount);
+    const _alreadyPaid=+_item.amountPaid||0;
+    const _balance=_totalPayable-_alreadyPaid;
+    if(payAmt>_balance+1){showToast('⚠️ Payment ₹'+payAmt.toLocaleString('en-IN')+' exceeds balance ₹'+Math.round(_balance).toLocaleString('en-IN'));return;}
+  }
   const items=DB.get(type);
   const item=items.find(x=>x.id===id);
   if(!item)return;
@@ -873,7 +1046,7 @@ function savePartialPayment(type,id){
 // DASHBOARD
 // ═══════════════════════════════════════════
 function renderDashboard(){
-  const sales=DB.get('sales'),loans=DB.get('loans'),udhars=DB.get('udhars'),sahukars=DB.get('sahukars');
+  const sales=DB.getActive('sales'),loans=DB.getActive('loans'),udhars=DB.getActive('udhars'),sahukars=DB.getActive('sahukars');
   const td=today(),tm=td.slice(0,7);
   const tS=sales.filter(s=>s.date===td),mS=sales.filter(s=>s.date.startsWith(tm));
   const pU=udhars.filter(u=>u.status==='Pending');
@@ -921,9 +1094,9 @@ function renderDashboard(){
 // ═══════════════════════════════════════════
 function showDailyClosing(){
   const td=today();
-  const sales=DB.get('sales').filter(s=>s.date===td);
-  const loans=DB.get('loans').filter(l=>l.date===td);
-  const udhars=DB.get('udhars');
+  const sales=DB.getActive('sales').filter(s=>s.date===td);
+  const loans=DB.getActive('loans').filter(l=>l.date===td);
+  const udhars=DB.getActive('udhars');
   const buys=DB.get('buys').filter(b=>b.date===td);
   const payments=DB.get('payments').filter(p=>p.date===td);
   const cashSales=sales.filter(s=>s.payMode==='Cash').reduce((a,s)=>a+(+s.amount||0),0);
@@ -959,7 +1132,7 @@ function showDailyClosing(){
 let salesFilter='all';
 function filterSales(f,btn){salesFilter=f;document.querySelectorAll('#sales-filter-tabs .filter-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderSales();}
 function renderSales(){
-  let s=DB.get('sales').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  let s=DB.getActive('sales').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   if(salesFilter!=='all')s=s.filter(x=>x.payMode===salesFilter);
   const el=document.getElementById('sales-list');
   if(!s.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">🧾</div><p>No sales yet.</p></div>`;return;}
@@ -975,7 +1148,7 @@ function renderSales(){
       </div>
       <div class="list-item-right">
         <div class="list-item-amount">${fmt(r.amount)}</div>
-        <br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;" onclick="editRecord('sales','${r.id}')">✏️ Edit</button>
+        <br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;" onclick="editRecord('sales','${r.id}')">✏️ Edit</button><br><button class="pay-btn" style="background:var(--muted);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="showEditHistory('sales','${r.id}')">📋 Log</button>
         <br><button class="delete-btn" onclick="deleteSale('${r.id}')">Delete</button>
       </div>
     </div>`).join('');
@@ -1066,6 +1239,9 @@ function saveEdit(type, id){
   const r = items.find(x=>x.id===id);
   if(!r){ showToast('Record not found'); return; }
 
+  // Store previous values for edit history BEFORE making changes
+  const previousValues = JSON.parse(JSON.stringify(r));
+
   // Update common fields
   r.date = gv('ed-date') || r.date;
   r.customerName = gv('ed-name') || r.customerName;
@@ -1095,6 +1271,8 @@ function saveEdit(type, id){
   }
 
   DB.set(type, items);
+  // Log the edit with before/after comparison
+  logEdit(type, id, previousValues, r);
   closeModal();
   showToast('✅ Record updated!');
   renderDashboard();
@@ -1136,7 +1314,16 @@ function saveUdharNotes(id){
   updateSheetTab('Udhars').catch(()=>{});
 }
 
-function deleteSale(id){if(!confirm('Delete?'))return;DB.set('sales',DB.get('sales').filter(s=>s.id!==id));DB.set('udhars',DB.get('udhars').filter(u=>u.saleId!==id));renderSales();renderDashboard();showToast('🗑️ Deleted');updateSheetTab('Sales').catch(()=>{});}
+function deleteSale(id){
+  if(!confirm('Delete this sale? It will be hidden but kept safely in backup.'))return;
+  DB.softDelete('sales',id);
+  // Also soft-delete linked udhar
+  const udhars=DB.get('udhars');
+  const u=udhars.find(x=>x.saleId===id);
+  if(u){u.deleted=true;u.deletedAt=Date.now();DB.set('udhars',udhars);}
+  renderSales();renderDashboard();showToast('🗑️ Sale hidden (kept in backup)');
+  updateSheetTab('Sales').catch(()=>{});updateSheetTab('Udhars').catch(()=>{});
+}
 
 // ═══════════════════════════════════════════
 // LOANS LIST
@@ -1144,7 +1331,7 @@ function deleteSale(id){if(!confirm('Delete?'))return;DB.set('sales',DB.get('sal
 let loansFilter='all';
 function filterLoans(f,btn){loansFilter=f;document.querySelectorAll('#loans-filter-tabs .filter-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderLoans();}
 function renderLoans(){
-  let loans=DB.get('loans').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  let loans=DB.getActive('loans').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
   if(loansFilter!=='all')loans=loans.filter(l=>l.status===loansFilter);
   const el=document.getElementById('loans-list');
   if(!loans.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">🔒</div><p>No loans yet.</p></div>`;return;}
@@ -1169,12 +1356,26 @@ function renderLoans(){
         <div class="list-item-amount">${fmt(l.amount)}</div>
         <span class="list-item-badge ${l.status==='Running'?'badge-red':'badge-green'}">${l.status}</span>
         ${l.status==='Running'?`<br><button class="part-pay-btn" onclick="openPartialPayment('loans','${l.id}')">💰 Pay</button><br><button class="close-loan-btn" onclick="closeLoan('${l.id}')">Close</button>`:''}
-        <br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;margin-top:4px;" onclick="editRecord('loans','${l.id}')">✏️ Edit</button>
+        <br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;margin-top:4px;" onclick="editRecord('loans','${l.id}')">✏️ Edit</button><br><button class="pay-btn" style="background:var(--muted);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="showEditHistory('loans','${l.id}')">📋 Log</button>
       </div>
     </div>`;
   }).join('');
 }
-function closeLoan(id){if(!confirm('Close loan fully?'))return;const loans=DB.get('loans');const l=loans.find(x=>x.id===id);if(l){l.status='Closed';l.packetStatus='Returned to Customer';}DB.set('loans',loans);renderLoans();renderDashboard();showToast('✅ Loan closed');updateSheetTab('Loans').catch(()=>{});}
+function closeLoan(id){
+  const loans=DB.get('loans');
+  const l=loans.find(x=>x.id===id);
+  if(!l)return;
+  const interest=calcInt(+l.amount,+l.roi,l.date);
+  const due=(+l.amount+interest)-(+l.amountPaid||0);
+  const msg=due>0
+    ?'Close this loan?\n\nBalance still due: ₹'+Math.round(due).toLocaleString('en-IN')+'\n\nPacket will be marked as Returned to Customer.'
+    :'Close this fully paid loan?\nPacket will be marked as Returned to Customer.';
+  if(!confirm(msg))return;
+  l.status='Closed';l.packetStatus='Returned to Customer';
+  DB.set('loans',loans);renderLoans();renderDashboard();
+  showToast('✅ Loan closed – Packet returned');
+  updateSheetTab('Loans').catch(()=>{});
+}
 
 // ═══════════════════════════════════════════
 // SUB SCREENS
@@ -1183,14 +1384,14 @@ function showSubScreen(type){
   let html='';
 
   if(type==='buy'){
-    const b=DB.get('buys').sort((a,c)=>(c.createdAt||0)-(a.createdAt||0));
+    const b=DB.getActive('buys').sort((a,c)=>(c.createdAt||0)-(a.createdAt||0));
     html=`<div class="form-title">⚖️ Old Gold Purchases</div>
       <button class="submit-btn" onclick="closeModal();openForm('buy')" style="margin-bottom:14px;">+ Add New Purchase</button>
       ${b.length?b.map(r=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.customerName)}</div>${custInfo(r)}<div class="list-item-sub">${esc(r.item)||'—'} &bull; ${r.metal} ${r.weight}g</div><div class="list-item-detail">${fmtDate(r.date)}</div>${r.notes?`<div class="list-item-notes">📝 ${esc(r.notes)}</div>`:''}</div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div><br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;margin-top:4px;" onclick="editRecord('buys','${r.id}')">✏️ Edit</button></div></div>`).join(''):'<div class="empty-state"><div class="empty-icon">⚖️</div><p>No purchases yet.</p></div>'}`;
   }
 
   else if(type==='udhar'){
-    const u=DB.get('udhars').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    const u=DB.getActive('udhars').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     const pend=u.filter(x=>x.status==='Pending'),clr=u.filter(x=>x.status==='Cleared');
     const totalBalance=pend.reduce((a,x)=>a+(+x.amount||0)-(+x.amountPaid||0),0);
     html=`<div class="form-title">📋 Udhar List</div>
@@ -1205,7 +1406,7 @@ function showSubScreen(type){
   }
 
   else if(type==='sahukar'){
-    const s=DB.get('sahukars').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    const s=DB.getActive('sahukars').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     html=`<div class="form-title">🏦 Sahukar Ledger</div>
       <button class="submit-btn" onclick="closeModal();openForm('sahukar')" style="margin-bottom:14px;">+ Add Entry</button>
       ${s.length?s.map(r=>{
@@ -1216,7 +1417,7 @@ function showSubScreen(type){
   }
 
   else if(type==='packets'){
-    const loans=DB.get('loans');
+    const loans=DB.getActive('loans');
     const gr={a:loans.filter(l=>l.packetStatus==='In Shop'),b:loans.filter(l=>l.packetStatus==='With Sahukar'),c:loans.filter(l=>l.packetStatus==='Returned to Customer')};
     const pr=arr=>arr.map(l=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name"><span class="packet-id">${l.packetNo}</span> &nbsp;${esc(l.customerName)}</div>${custInfo(l)}<div class="list-item-sub">${esc(l.item)||'—'} &bull; ${l.metal} ${l.weight}g</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(l.amount)}</div></div></div>`).join('');
     html=`<div class="form-title">📦 Packet Tracker</div>
@@ -1226,7 +1427,7 @@ function showSubScreen(type){
   }
 
   else if(type==='customers'){
-    const customers=DB.get('customers').sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    const customers=DB.getActive('customers').sort((a,b)=>(a.name||'').localeCompare(b.name||''));
     html=`<div class="form-title">👥 Customer Master</div>
       <button class="submit-btn" onclick="closeModal();openForm('customer-master')" style="margin-bottom:14px;">+ Add Customer</button>
       <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Search customers..." oninput="filterCustomerList(this.value)" style="padding-left:42px;" id="cust-search"></div>
@@ -1263,13 +1464,13 @@ function showSubScreen(type){
   }
 
   else if(type==='vendors'){
-    const vendors=DB.get('vendors');
+    const vendors=DB.getActive('vendors');
     html=`<div class="form-title">🏪 Vendors</div>
       <button class="submit-btn" onclick="closeModal();openForm('vendor-master')" style="margin-bottom:14px;">+ Add New Vendor</button>
       ${vendors.length?vendors.map(v=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(v.name)}</div><div class="list-item-detail">${v.city?'📍'+esc(v.city):''} ${v.mobile?'📞'+esc(v.mobile):''}</div>${v.notes?`<div class="list-item-notes">📝 ${esc(v.notes)}</div>`:''}</div><div class="list-item-right"><button class="delete-btn" onclick="deleteVendor('${v.id}')">Delete</button></div></div>`).join(''):'<div class="empty-state"><div class="empty-icon">🏪</div><p>No vendors yet.<br>Add vendors to record purchases.</p></div>'}`;
   }
   else if(type==='inventory'){
-    const vps=DB.get('vendorpurchases').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    const vps=DB.getActive('vendorpurchases').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     const goldTotal=vps.filter(v=>v.metal==='Gold').reduce((a,v)=>a+(+v.weight||0),0);
     const silverTotal=vps.filter(v=>v.metal==='Silver').reduce((a,v)=>a+(+v.weight||0),0);
     const goldAmt=vps.filter(v=>v.metal==='Gold').reduce((a,v)=>a+(+v.totalAmount||0),0);
@@ -1310,7 +1511,7 @@ function showSubScreen(type){
 // CUSTOMER HISTORY
 // ═══════════════════════════════════════════
 function showCustomerHistory(custId){
-  const sales=DB.get('sales').filter(r=>r.customerId===custId||r.customerName);
+  const sales=DB.get('sales').filter(r=>r.customerId===custId||(r.customerName&&!r.customerId));
   const loans=DB.get('loans').filter(r=>r.customerId===custId);
   const buys=DB.get('buys').filter(r=>r.customerId===custId);
   const udhars=DB.get('udhars').filter(r=>r.customerId===custId);
@@ -1342,7 +1543,7 @@ function filterCustomerList(q){
 // VILLAGE LIST
 // ═══════════════════════════════════════════
 function buildVillageList(filterQ){
-  const sales=DB.get('sales'),loans=DB.get('loans'),buys=DB.get('buys'),udhars=DB.get('udhars');
+  const sales=DB.getActive('sales'),loans=DB.getActive('loans'),buys=DB.getActive('buys'),udhars=DB.getActive('udhars');
   const all=[...sales.map(r=>({...r,type:'sale'})),...loans.map(r=>({...r,type:'loan'})),...buys.map(r=>({...r,type:'buy'}))];
   const vMap={};
   all.forEach(r=>{const v=(r.village||'').trim()||'(No Village)';if(!vMap[v])vMap[v]=[];vMap[v].push(r);});
@@ -1374,7 +1575,7 @@ function searchCustomer(q){
   if(!q||q.length<2){document.getElementById('search-results').innerHTML='<div style="color:var(--muted);text-align:center;padding:16px;font-size:13px;">Type at least 2 characters</div>';return;}
   const ql=q.toLowerCase();
   const m=r=>(r.customerName||'').toLowerCase().includes(ql)||(r.village||'').toLowerCase().includes(ql)||(r.mobile||'').includes(ql)||(r.fatherName||'').toLowerCase().includes(ql);
-  const s=DB.get('sales').filter(m),l=DB.get('loans').filter(m),b=DB.get('buys').filter(m),u=DB.get('udhars').filter(m);
+  const s=DB.getActive('sales').filter(m),l=DB.getActive('loans').filter(m),b=DB.getActive('buys').filter(m),u=DB.getActive('udhars').filter(m);
   let html='';
   if(!s.length&&!l.length&&!b.length&&!u.length){html='<div class="empty-state"><div class="empty-icon">😶</div><p>No records found.</p></div>';}
   if(s.length)html+=`<div class="history-header">Sales (${s.length})</div>`+s.map(r=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.customerName)}</div>${custInfo(r)}<div class="list-item-sub">${esc(r.item)||'—'} &bull; ${fmtDate(r.date)}</div>${r.notes?`<div class="list-item-notes">📝 ${esc(r.notes)}</div>`:''}</div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div><span class="list-item-badge ${r.payMode==='Udhar'?'badge-red':'badge-green'}">${r.payMode}</span></div></div>`).join('');
@@ -1402,21 +1603,21 @@ function closeSahukar(id){
   updateSheetTab('Sahukars').catch(()=>{});updateSheetTab('Loans').catch(()=>{});
 }
 function deleteSahukarMaster(id){
-  if(!confirm('Delete this sahukar?'))return;
-  DB.set('sahukarmaster',DB.get('sahukarmaster').filter(s=>s.id!==id));
-  showToast('🗑️ Deleted');showSubScreen('sahukars-master');
+  if(!confirm('Delete this sahukar? It will be hidden but kept in backup.'))return;
+  DB.softDelete('sahukarmaster',id);
+  showToast('🗑️ Sahukar hidden (kept in backup)');showSubScreen('sahukars-master');
   updateSheetTab('SahukarMaster').catch(()=>{});
 }
 function deleteVendor(id){
-  if(!confirm('Delete this vendor?'))return;
-  DB.set('vendors',DB.get('vendors').filter(v=>v.id!==id));
-  showToast('🗑️ Vendor deleted');showSubScreen('vendors');
+  if(!confirm('Delete this vendor? It will be hidden but kept in backup.'))return;
+  DB.softDelete('vendors',id);
+  showToast('🗑️ Vendor hidden (kept in backup)');showSubScreen('vendors');
   updateSheetTab('Vendors').catch(()=>{});
 }
 function deleteVendorPurchase(id){
-  if(!confirm('Delete this purchase? Stock will update.'))return;
-  DB.set('vendorpurchases',DB.get('vendorpurchases').filter(v=>v.id!==id));
-  showToast('🗑️ Purchase deleted');renderDashboard();showSubScreen('inventory');
+  if(!confirm('Delete this purchase? It will be hidden but kept in backup.'))return;
+  DB.softDelete('vendorpurchases',id);
+  showToast('🗑️ Purchase hidden (kept in backup)');renderDashboard();showSubScreen('inventory');
   updateSheetTab('VendorPurchases').catch(()=>{});
 }
 // ═══════════════════════════════════════════
@@ -1567,17 +1768,34 @@ function buildReportsHTML(){
         </div>`).join(''):'<div style="color:var(--green);font-size:13px;padding:12px 0;">No overdue udhar ✅</div>'}
     </div>
 
-    <!-- EXPORT -->
+    <!-- EXPORT & BACKUP -->
     <div class="report-section" id="rpt-export">
-      <button class="export-btn" onclick="exportCSV('sales')">⬇️ Export Sales CSV</button>
-      <button class="export-btn" onclick="exportCSV('loans')">⬇️ Export Loans CSV</button>
-      <button class="export-btn" onclick="exportCSV('buys')">⬇️ Export Old Gold Purchases</button>
-      <button class="export-btn" onclick="exportCSV('sahukars')">⬇️ Export Sahukar Ledger</button>
-      <button class="export-btn" onclick="exportCSV('udhars')">⬇️ Export Udhar List</button>
-      <button class="export-btn" onclick="exportCSV('vendorpurchases')">⬇️ Export Vendor Purchases</button>
-      <button class="export-btn" onclick="exportCSV('customers')">⬇️ Export Customer List</button>
+
+      <!-- BACKUP SECTION -->
+      <div style="background:linear-gradient(135deg,#F0FFF5,#E8FAF0);border:1.5px solid var(--green);border-radius:14px;padding:16px;margin-bottom:16px;">
+        <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:4px;">🔒 Data Backup & Restore</div>
+        <div id="backup-status" style="font-size:11px;color:var(--muted);margin-bottom:12px;">Checking...</div>
+        <button class="submit-btn" onclick="manualBackup()" style="background:linear-gradient(135deg,var(--green),#2ECC71);margin-bottom:10px;">⬇️ Download Full Backup (JSON)</button>
+        <button onclick="restoreFromFile()" style="width:100%;padding:13px;background:#fff;color:var(--blue);border:2px solid var(--blue);border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:10px;">📂 Restore from Backup File</button>
+        <div id="local-backups-list"></div>
+      </div>
+
+      <!-- CSV EXPORTS -->
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Export Individual Modules (CSV)</div>
+      <button class="export-btn" onclick="exportCSV('sales')">⬇️ Sales CSV</button>
+      <button class="export-btn" onclick="exportCSV('loans')">⬇️ Gold Loans CSV</button>
+      <button class="export-btn" onclick="exportCSV('buys')">⬇️ Old Gold Purchases CSV</button>
+      <button class="export-btn" onclick="exportCSV('sahukars')">⬇️ Sahukar Ledger CSV</button>
+      <button class="export-btn" onclick="exportCSV('udhars')">⬇️ Udhar List CSV</button>
+      <button class="export-btn" onclick="exportCSV('vendorpurchases')">⬇️ Vendor Purchases CSV</button>
+      <button class="export-btn" onclick="exportCSV('customers')">⬇️ Customer List CSV</button>
+      <button class="export-btn" onclick="exportCSV('payments')">⬇️ Payments History CSV</button>
+
+      <!-- DANGER ZONE -->
       <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
-        <button onclick="if(confirm('Delete ALL local data?'))clearAllData()" style="width:100%;padding:13px;background:#FAD7D4;color:var(--red);border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">⚠️ Clear Local Data</button>
+        <div style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">⚠️ Danger Zone</div>
+        <button onclick="showDeletedRecords()" style="width:100%;padding:12px;background:#FFF5F5;color:var(--red);border:1.5px solid var(--red);border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:8px;">🗑️ View Deleted Records</button>
+        <button onclick="if(confirm('Delete ALL local data? Download a backup first!'))clearAllData()" style="width:100%;padding:13px;background:#FAD7D4;color:var(--red);border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">💥 Clear All Local Data</button>
       </div>
     </div>`;
 }
@@ -1590,6 +1808,181 @@ function switchReportTab(tabId, btn){
   if(el)el.classList.add('active');
 }
 
+
+// ═══════════════════════════════════════════
+// BACKUP SYSTEM
+// ═══════════════════════════════════════════
+const BACKUP_MODULES = ['sales','loans','buys','udhars','sahukars','customers',
+  'sahukarmaster','payments','vendors','vendorpurchases','edithistory'];
+
+function collectAllData(){
+  const backup = {
+    version: '2.0',
+    appName: 'Shree Jee Jewellers',
+    exportedAt: new Date().toISOString(),
+    exportedDate: today(),
+    data: {}
+  };
+  BACKUP_MODULES.forEach(k => {
+    // Use getAll to include soft-deleted records in backup
+    backup.data[k] = DB.getAll(k);
+  });
+  return backup;
+}
+
+function manualBackup(){
+  const backup = collectAllData();
+  const dateStr = today().replace(/-/g,'_');
+  const filename = `backup_${dateStr}.json`;
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  a.click(); URL.revokeObjectURL(url);
+  // Mark last backup time
+  localStorage.setItem('sjj_last_backup', Date.now());
+  updateBackupStatus();
+  showToast('✅ Backup downloaded: ' + filename);
+}
+
+function autoDailyBackup(){
+  const lastBackup = localStorage.getItem('sjj_last_auto_backup');
+  const todayStr = today();
+  if(lastBackup === todayStr) return; // already backed up today
+  // Save to localStorage with date key (keeps last 7 days)
+  const backup = collectAllData();
+  const key = 'sjj_backup_' + todayStr;
+  try{
+    localStorage.setItem(key, JSON.stringify(backup));
+    localStorage.setItem('sjj_last_auto_backup', todayStr);
+    // Clean old backups — keep only last 7
+    const backupKeys = [];
+    for(let i=0; i<localStorage.length; i++){
+      const k = localStorage.key(i);
+      if(k && k.startsWith('sjj_backup_')) backupKeys.push(k);
+    }
+    backupKeys.sort().slice(0, -7).forEach(k => localStorage.removeItem(k));
+    console.log('✅ Auto backup saved: ' + key);
+  }catch(e){
+    console.warn('Auto backup failed (storage full?):', e);
+  }
+}
+
+function updateBackupStatus(){
+  const el = document.getElementById('backup-status');
+  if(!el) return;
+  const last = localStorage.getItem('sjj_last_backup');
+  if(last){
+    const d = new Date(parseInt(last));
+    el.textContent = 'Last backup: ' + d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    el.style.color = 'var(--green)';
+  } else {
+    el.textContent = 'No backup taken yet';
+    el.style.color = 'var(--red)';
+  }
+}
+
+function restoreFromFile(){
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    try{
+      const text = await file.text();
+      const backup = JSON.parse(text);
+      if(!backup.data || !backup.version){
+        showToast('❌ Invalid backup file'); return;
+      }
+      if(!confirm('Restore from backup dated ' + (backup.exportedDate||'unknown') + '?\n\nThis will REPLACE all current data. Are you sure?')) return;
+      // Restore all modules
+      Object.entries(backup.data).forEach(([k, v]) => {
+        if(Array.isArray(v)) DB.set(k, v);
+      });
+      closeModal();
+      renderDashboard();
+      showToast('✅ Data restored from backup!');
+      localStorage.setItem('sjj_last_backup', Date.now());
+      updateBackupStatus();
+    }catch(err){
+      showToast('❌ Restore failed: invalid file');
+    }
+  };
+  input.click();
+}
+
+function listLocalBackups(){
+  const keys = [];
+  for(let i=0; i<localStorage.length; i++){
+    const k = localStorage.key(i);
+    if(k && k.startsWith('sjj_backup_')) keys.push(k);
+  }
+  return keys.sort().reverse(); // newest first
+}
+
+function downloadLocalBackup(key){
+  const data = localStorage.getItem(key);
+  if(!data){ showToast('Backup not found'); return; }
+  const dateStr = key.replace('sjj_backup_','');
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'backup_' + dateStr + '.json';
+  a.click(); URL.revokeObjectURL(url);
+  showToast('✅ Downloaded: backup_' + dateStr + '.json');
+}
+
+// ═══════════════════════════════════════════
+// EDIT HISTORY LOG
+// ═══════════════════════════════════════════
+function logEdit(type, id, oldValues, newValues){
+  const history = DB.get('edithistory');
+  const entry = {
+    id: 'EH' + Date.now(),
+    type,         // 'sales','loans','buys', etc
+    recordId: id,
+    editedAt: Date.now(),
+    editedDate: today(),
+    previousValues: JSON.parse(JSON.stringify(oldValues)), // deep copy
+    // Only store changed fields
+    changedFields: Object.keys(newValues).filter(k =>
+      String(oldValues[k]||'') !== String(newValues[k]||'')
+    )
+  };
+  history.push(entry);
+  // Keep only last 500 edit log entries to save space
+  if(history.length > 500) history.splice(0, history.length - 500);
+  DB.set('edithistory', history);
+}
+
+function showEditHistory(type, id){
+  const history = DB.get('edithistory')
+    .filter(e => e.type===type && e.recordId===id)
+    .sort((a,b) => b.editedAt - a.editedAt);
+  if(!history.length){
+    showToast('No edit history for this record');
+    return;
+  }
+  const html = `<div class="form-title">📋 Edit History</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">${history.length} edit${history.length>1?'s':''} recorded</div>
+    ${history.map(h=>`
+      <div style="background:var(--bg);border-radius:12px;padding:12px 14px;margin-bottom:10px;border:1px solid var(--border);">
+        <div style="font-size:12px;font-weight:700;color:var(--gold-dark);margin-bottom:6px;">
+          ${new Date(h.editedAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+        </div>
+        <div style="font-size:11px;color:var(--muted);">Changed: ${(h.changedFields||[]).join(', ')||'—'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">
+          ${Object.entries(h.previousValues||{})
+            .filter(([k])=>(h.changedFields||[]).includes(k))
+            .map(([k,v])=>`<span style="background:#FAD7D4;border-radius:4px;padding:1px 6px;margin:2px;display:inline-block;">${k}: ${esc(String(v||''))}</span>`)
+            .join('')}
+        </div>
+      </div>`).join('')}
+    <button class="cancel-btn" onclick="closeModal()">Close</button>`;
+  openModal(html);
+}
+
 // ═══════════════════════════════════════════
 // EXPORT CSV
 // ═══════════════════════════════════════════
@@ -1600,7 +1993,41 @@ function exportCSV(type){
   const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download=`SJJ_${type}_${today()}.csv`;a.click();URL.revokeObjectURL(url);showToast('✅ CSV downloaded!');
 }
-function clearAllData(){['sales','loans','buys','udhars','sahukars','customers','sahukarmaster','payments','vendors','vendorpurchases'].forEach(k=>localStorage.removeItem('sjj_'+k));closeModal();renderDashboard();showToast('🗑️ Cleared');}
+function showDeletedRecords(){
+  const allModules = ['sales','loans','buys','udhars','sahukars','vendors','vendorpurchases'];
+  let html = '<div class="form-title">🗑️ Deleted Records</div>';
+  let totalDeleted = 0;
+  allModules.forEach(mod => {
+    const deleted = DB.getAll(mod).filter(r=>r.deleted);
+    if(deleted.length){
+      totalDeleted += deleted.length;
+      html += `<div class="history-header" style="margin-top:10px;">${mod.toUpperCase()} (${deleted.length})</div>`;
+      html += deleted.map(r=>`
+        <div style="background:#FFF5F5;border:1px solid #E8A0A0;border-radius:12px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text);">${esc(r.customerName||r.sahukarName||r.vendorName||r.name||r.id)}</div>
+            <div style="font-size:11px;color:var(--muted);">Deleted: ${new Date(r.deletedAt||0).toLocaleDateString('en-IN')}</div>
+          </div>
+          <button onclick="restoreRecord('${mod}','${r.id}')" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">Restore</button>
+        </div>`).join('');
+    }
+  });
+  if(!totalDeleted) html += '<div class="empty-state"><div class="empty-icon">✅</div><p>No deleted records.</p></div>';
+  html += '<button class="cancel-btn" onclick="closeModal()">Close</button>';
+  openModal(html);
+}
+
+function restoreRecord(mod, id){
+  const items = DB.get(mod);
+  const item = items.find(x=>x.id===id);
+  if(item){ delete item.deleted; delete item.deletedAt; }
+  DB.set(mod, items);
+  showToast('✅ Record restored!');
+  showDeletedRecords();
+  renderDashboard();
+}
+
+function clearAllData(){['sales','loans','buys','udhars','sahukars','customers','sahukarmaster','payments','vendors','vendorpurchases','edithistory'].forEach(k=>localStorage.removeItem('sjj_'+k));closeModal();renderDashboard();showToast('🗑️ All data cleared');}
 
 // ═══════════════════════════════════════════
 // INIT
@@ -1609,6 +2036,20 @@ window.addEventListener('load',()=>{
   document.getElementById('login-screen').style.display='none';
   document.getElementById('main-app').style.display='none';
   setTimeout(tryRestoreSession,800);
+  // Auto daily backup (non-blocking, after 3s)
+  setTimeout(()=>{
+    autoDailyBackup();
+    updateBackupStatus();
+    // Show local backup list in reports
+    const lbl=document.getElementById('local-backups-list');
+    if(lbl){
+      const keys=listLocalBackups();
+      lbl.innerHTML=keys.length
+        ?'<div style="font-size:11px;font-weight:700;color:var(--muted);margin:8px 0 6px;">Auto-saved backups (last 7 days):</div>'
+          +keys.map(k=>`<button onclick="downloadLocalBackup('${k}')" style="width:100%;padding:9px 12px;background:#F0F5FF;color:var(--blue);border:1.5px solid var(--blue);border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:6px;text-align:left;">⬇️ ${k.replace('sjj_backup_','').replace(/_/g,'-')}.json</button>`).join('')
+        :'<div style="font-size:11px;color:var(--muted);margin-top:6px;">No auto-backups yet — will save daily.</div>';
+    }
+  },3000);
 });
 </script>
 </body>
