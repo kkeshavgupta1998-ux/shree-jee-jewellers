@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Shree Jee Jewellers</title>
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap');
+  :root {
+    --gold:#C9922A;--gold-light:#F0C96B;--gold-dark:#8B6010;
+    --cream:#FDF8EE;--deep:#1A1208;--red:#C0392B;--green:#1E7D45;--blue:#1A4F8A;
+    --bg:#F5EDD8;--card:#FFFDF5;--border:#E8D9B0;--text:#2C1D05;--muted:#8B7355;
+    --shadow:0 2px 12px rgba(140,90,10,0.13);--radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;max-width:480px;margin:0 auto;}
+  /* TOPBAR */
+  .topbar{background:linear-gradient(135deg,var(--gold-dark) 0%,var(--gold) 60%,var(--gold-light) 100%);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 16px rgba(140,90,10,0.25);}
+  .topbar-title{color:#fff;font-family:'Playfair Display',serif;font-size:19px;text-shadow:0 1px 4px rgba(0,0,0,0.2);}
+  .topbar-sub{color:rgba(255,255,255,0.85);font-size:10px;margin-top:1px;}
+  .sync-btn{background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);border-radius:20px;color:#fff;font-size:11px;font-weight:700;padding:6px 12px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px;white-space:nowrap;}
+  .sync-btn.syncing{animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;}
+  .sync-dot.red{background:#f87171;}
+  .sync-dot.yellow{background:#fbbf24;}
+  /* SCREENS */
+  .screen{display:none;padding:16px;padding-bottom:90px;animation:fadeIn 0.2s ease;}
+  .screen.active{display:block;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  /* NAV */
+  .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--deep);display:flex;border-top:2px solid var(--gold-dark);z-index:200;}
+  .nav-btn{flex:1;padding:10px 4px 8px;background:none;border:none;color:rgba(255,255,255,0.45);font-size:9px;font-family:'DM Sans',sans-serif;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;text-transform:uppercase;}
+  .nav-btn .icon{font-size:20px;}
+  .nav-btn.active{color:var(--gold-light);}
+  /* CARDS */
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+  .stat-card{background:var(--card);border-radius:var(--radius);padding:14px;border:1px solid var(--border);box-shadow:var(--shadow);}
+  .stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;}
+  .stat-value{font-size:20px;font-weight:700;color:var(--gold-dark);}
+  .stat-value.green{color:var(--green);}.stat-value.red{color:var(--red);}.stat-value.blue{color:var(--blue);}
+  .stat-sub{font-size:10px;color:var(--muted);margin-top:2px;}
+  .gold-bar{background:linear-gradient(135deg,var(--gold-dark),var(--gold));border-radius:var(--radius);padding:16px;color:#fff;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 16px rgba(140,90,10,0.3);}
+  .gold-bar-label{font-size:11px;opacity:0.85;text-transform:uppercase;letter-spacing:0.5px;}
+  .gold-bar-value{font-size:26px;font-weight:700;}
+  .gold-bar-unit{font-size:12px;opacity:0.8;}
+  .section-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--gold-dark);margin-bottom:12px;}
+  .greeting{font-size:13px;color:var(--muted);margin-bottom:4px;}
+  /* ACTION BUTTONS */
+  .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;}
+  .action-btn{background:var(--card);border:1.5px solid var(--border);border-radius:var(--radius);padding:20px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;box-shadow:var(--shadow);transition:all 0.15s;text-align:center;}
+  .action-btn:active{transform:scale(0.96);}
+  .action-btn .btn-icon{font-size:36px;}
+  .action-btn .btn-label{font-size:13px;font-weight:700;color:var(--text);line-height:1.2;}
+  .action-btn .btn-sub{font-size:10px;color:var(--muted);}
+  .action-btn.gold-btn{background:linear-gradient(135deg,#FDF0D0,#FFF8E8);border-color:var(--gold);}
+  .action-btn.red-btn{background:#FFF5F5;border-color:#E8A0A0;}
+  .action-btn.green-btn{background:#F0FFF5;border-color:#90D4A8;}
+  .action-btn.blue-btn{background:#F0F5FF;border-color:#90A8D4;}
+  .action-btn.purple-btn{background:#F8F0FF;border-color:#C8A0D4;}
+  /* FORMS */
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;}
+  .field input,.field select{width:100%;padding:13px 14px;font-size:16px;font-family:'DM Sans',sans-serif;border:1.5px solid var(--border);border-radius:12px;background:var(--cream);color:var(--text);outline:none;transition:border 0.15s;-webkit-appearance:none;}
+  .field input:focus,.field select:focus{border-color:var(--gold);background:#fff;}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .seg-control{display:flex;background:var(--bg);border-radius:10px;padding:3px;gap:2px;}
+  .seg-btn{flex:1;padding:10px 6px;border:none;background:none;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:all 0.15s;font-family:'DM Sans',sans-serif;}
+  .seg-btn.active{background:#fff;color:var(--gold-dark);box-shadow:0 1px 6px rgba(0,0,0,0.1);}
+  .submit-btn{width:100%;padding:16px;background:linear-gradient(135deg,var(--gold-dark),var(--gold));color:#fff;border:none;border-radius:14px;font-size:17px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;box-shadow:0 4px 16px rgba(140,90,10,0.35);transition:all 0.15s;}
+  .submit-btn:active{transform:scale(0.98);}
+  .cancel-btn{width:100%;padding:13px;background:transparent;color:var(--muted);border:1.5px solid var(--border);border-radius:14px;font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;margin-top:10px;}
+  .form-section-label{font-size:11px;font-weight:700;color:var(--gold-dark);text-transform:uppercase;letter-spacing:0.6px;margin:16px 0 10px;padding-bottom:6px;border-bottom:1.5px solid var(--border);}
+  .form-title{font-size:20px;font-weight:700;color:var(--gold-dark);margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+  /* LISTS */
+  .list-item{background:var(--card);border-radius:var(--radius);padding:14px 16px;border:1px solid var(--border);margin-bottom:10px;box-shadow:var(--shadow);display:flex;justify-content:space-between;align-items:flex-start;}
+  .list-item-left{flex:1;min-width:0;}
+  .list-item-name{font-size:15px;font-weight:700;color:var(--text);}
+  .list-item-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+  .list-item-detail{font-size:11px;color:var(--muted);margin-top:2px;}
+  .list-item-right{text-align:right;flex-shrink:0;margin-left:10px;}
+  .list-item-amount{font-size:17px;font-weight:700;color:var(--gold-dark);}
+  .list-item-badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;margin-top:4px;}
+  .badge-green{background:#D4F4E2;color:var(--green);}.badge-red{background:#FAD7D4;color:var(--red);}
+  .badge-blue{background:#D4E4FA;color:var(--blue);}.badge-gold{background:#FDEBC4;color:var(--gold-dark);}
+  .badge-purple{background:#EDD4FA;color:#6A1A8A;}
+  .empty-state{text-align:center;padding:40px 20px;color:var(--muted);}
+  .empty-state .empty-icon{font-size:48px;margin-bottom:10px;}
+  .empty-state p{font-size:14px;}
+  /* SEARCH */
+  .search-box{position:relative;margin-bottom:14px;}
+  .search-box input{width:100%;padding:13px 14px 13px 42px;font-size:15px;border:1.5px solid var(--border);border-radius:14px;background:var(--card);font-family:'DM Sans',sans-serif;outline:none;color:var(--text);}
+  .search-box input:focus{border-color:var(--gold);}
+  .search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--muted);pointer-events:none;}
+  .filter-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none;}
+  .filter-tabs::-webkit-scrollbar{display:none;}
+  .filter-tab{padding:7px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;white-space:nowrap;transition:all 0.15s;}
+  .filter-tab.active{background:var(--gold-dark);border-color:var(--gold-dark);color:#fff;}
+  .packet-id{font-family:monospace;font-size:13px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:2px 8px;color:var(--gold-dark);font-weight:700;}
+  /* TOAST */
+  .toast{position:fixed;bottom:85px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--deep);color:#fff;padding:12px 22px;border-radius:30px;font-size:14px;font-weight:600;z-index:999;opacity:0;transition:all 0.3s;pointer-events:none;white-space:nowrap;max-width:90%;text-align:center;border:1.5px solid var(--gold);}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  /* MODAL */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:300;align-items:flex-end;justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal-sheet{background:var(--card);border-radius:24px 24px 0 0;padding:20px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;animation:slideUp 0.25s ease;}
+  @keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  .modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;}
+  /* BUTTONS */
+  .pay-btn{padding:8px 16px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px;font-family:'DM Sans',sans-serif;}
+  .close-loan-btn{padding:8px 16px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px;font-family:'DM Sans',sans-serif;}
+  .delete-btn{padding:6px 12px;background:#FAD7D4;color:var(--red);border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;margin-top:4px;font-family:'DM Sans',sans-serif;}
+  .export-btn{width:100%;padding:14px;background:var(--deep);color:var(--gold-light);border:none;border-radius:14px;font-size:15px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;margin-bottom:10px;}
+  .interest-display{background:linear-gradient(135deg,#FDF0D0,#FFF8E8);border:1.5px solid var(--gold);border-radius:12px;padding:12px 14px;margin-bottom:14px;}
+  .int-label{font-size:11px;color:var(--muted);text-transform:uppercase;}
+  .int-value{font-size:18px;font-weight:700;color:var(--gold-dark);}
+  .history-header{font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+  .top-actions{display:flex;gap:8px;margin-bottom:14px;}
+  .top-action-btn{flex:1;padding:12px 8px;background:var(--card);border:1.5px solid var(--gold);border-radius:12px;color:var(--gold-dark);font-size:13px;font-weight:700;cursor:pointer;text-align:center;font-family:'DM Sans',sans-serif;}
+  /* VILLAGE */
+  .village-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:12px;overflow:hidden;}
+  .village-header{background:linear-gradient(135deg,#FDF0D0,#FFF8E8);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+  .village-name{font-size:16px;font-weight:700;color:var(--gold-dark);}
+  .village-stats{font-size:11px;color:var(--muted);text-align:right;line-height:1.6;}
+  .village-body{display:none;padding:4px 16px 12px;}
+  .village-body.open{display:block;}
+  .village-customer{padding:10px 0;border-bottom:1px solid var(--border);}
+  .village-customer:last-child{border-bottom:none;}
+  .vc-name{font-size:14px;font-weight:700;color:var(--text);}
+  .vc-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+  .vc-chips{margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;}
+  .vc-chip{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+  /* LOGIN SCREEN */
+  .login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:30px 20px;text-align:center;background:var(--bg);}
+  .login-logo{font-size:64px;margin-bottom:16px;}
+  .login-title{font-family:'Playfair Display',serif;font-size:28px;color:var(--gold-dark);margin-bottom:8px;}
+  .login-sub{font-size:14px;color:var(--muted);margin-bottom:32px;line-height:1.6;}
+  .google-btn{display:flex;align-items:center;gap:12px;background:#fff;border:2px solid var(--border);border-radius:14px;padding:16px 24px;font-size:16px;font-weight:700;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;box-shadow:var(--shadow);transition:all 0.15s;width:100%;justify-content:center;}
+  .google-btn:active{transform:scale(0.98);}
+  .google-icon{width:24px;height:24px;}
+  .login-note{font-size:11px;color:var(--muted);margin-top:20px;line-height:1.6;}
+  /* SYNC STATUS BAR */
+  .sync-status-bar{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);}
+  .sync-status-bar.success{background:#F0FFF5;border-color:#90D4A8;color:var(--green);}
+  .sync-status-bar.error{background:#FFF5F5;border-color:#E8A0A0;color:var(--red);}
+  input[type="date"]{color:var(--text);}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" class="login-screen">
+  <div class="login-logo">💍</div>
+  <div class="login-title">Shree Jee Jewellers</div>
+  <div class="login-sub">Sign in with Google to sync your shop data automatically to Google Sheets. Data is safe, private, and only you can access it.</div>
+  <button class="google-btn" onclick="signIn()">
+    <svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+    Sign in with Google
+  </button>
+  <div class="login-note">🔒 Your data is stored in YOUR Google Drive.<br>Shree Jee app never stores your data on any server.</div>
+</div>
+
+<!-- MAIN APP (hidden until signed in) -->
+<div id="main-app" style="display:none;">
+
+<div class="topbar">
+  <div>
+    <div style="font-size:22px;">💍</div>
+  </div>
+  <div style="flex:1;margin-left:10px;">
+    <div class="topbar-title">Shree Jee Jewellers</div>
+    <div class="topbar-sub" id="topbarDate"></div>
+  </div>
+  <button class="sync-btn" id="sync-btn" onclick="manualSync()">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span id="sync-label">Synced</span>
+  </button>
+</div>
+
+<!-- HOME -->
+<div class="screen active" id="screen-home">
+  <div style="padding-top:12px;">
+    <div class="greeting">Good day 🙏</div>
+    <div class="section-title">Today's Summary</div>
+    <div class="gold-bar">
+      <div>
+        <div class="gold-bar-label">Today's Sales</div>
+        <div class="gold-bar-value" id="dash-today-sales">₹0</div>
+        <div class="gold-bar-unit" id="dash-today-count">0 transactions</div>
+      </div>
+      <div style="font-size:42px;">🏪</div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">Monthly Sales</div><div class="stat-value green" id="dash-month-sales">₹0</div><div class="stat-sub" id="dash-month-count">0 sales</div></div>
+      <div class="stat-card"><div class="stat-label">Udhar Pending</div><div class="stat-value red" id="dash-udhar">₹0</div><div class="stat-sub" id="dash-udhar-count">0 customers</div></div>
+      <div class="stat-card"><div class="stat-label">Active Loans</div><div class="stat-value blue" id="dash-loans">₹0</div><div class="stat-sub" id="dash-loan-count">0 packets</div></div>
+      <div class="stat-card"><div class="stat-label">Sahukar Dues</div><div class="stat-value red" id="dash-sahukar">₹0</div><div class="stat-sub" id="dash-sahukar-count">0 active</div></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">Gold in Shop</div><div class="stat-value" id="dash-gold-shop">0g</div></div>
+      <div class="stat-card"><div class="stat-label">Gold w/ Sahukar</div><div class="stat-value red" id="dash-gold-sahukar">0g</div></div>
+    </div>
+    <div class="section-title" style="margin-top:8px;">Quick Actions</div>
+    <div class="action-grid">
+      <div class="action-btn gold-btn" onclick="openForm('sale')"><div class="btn-icon">🧾</div><div class="btn-label">Add Sale</div><div class="btn-sub">Sell jewellery</div></div>
+      <div class="action-btn red-btn" onclick="openForm('loan')"><div class="btn-icon">🔒</div><div class="btn-label">Gold Loan</div><div class="btn-sub">Girvi / Pledge</div></div>
+      <div class="action-btn green-btn" onclick="openForm('buy')"><div class="btn-icon">⚖️</div><div class="btn-label">Buy Old Gold</div><div class="btn-sub">Purchase from customer</div></div>
+      <div class="action-btn blue-btn" onclick="openForm('sahukar')"><div class="btn-icon">🏦</div><div class="btn-label">Sahukar</div><div class="btn-sub">Borrow money</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- SALES -->
+<div class="screen" id="screen-sales">
+  <div style="padding-top:12px;">
+    <div class="section-title">Sales</div>
+    <div class="top-actions"><button class="top-action-btn" onclick="openForm('sale')">+ Add Sale</button></div>
+    <div class="filter-tabs" id="sales-filter-tabs">
+      <div class="filter-tab active" onclick="filterSales('all',this)">All</div>
+      <div class="filter-tab" onclick="filterSales('Cash',this)">Cash</div>
+      <div class="filter-tab" onclick="filterSales('UPI',this)">UPI</div>
+      <div class="filter-tab" onclick="filterSales('Udhar',this)">Udhar</div>
+    </div>
+    <div id="sales-list"></div>
+  </div>
+</div>
+
+<!-- LOANS -->
+<div class="screen" id="screen-loans">
+  <div style="padding-top:12px;">
+    <div class="section-title">Gold Loans (Girvi)</div>
+    <div class="top-actions"><button class="top-action-btn" onclick="openForm('loan')">+ New Loan</button></div>
+    <div class="filter-tabs" id="loans-filter-tabs">
+      <div class="filter-tab active" onclick="filterLoans('all',this)">All</div>
+      <div class="filter-tab" onclick="filterLoans('Running',this)">Running</div>
+      <div class="filter-tab" onclick="filterLoans('Closed',this)">Closed</div>
+    </div>
+    <div id="loans-list"></div>
+  </div>
+</div>
+
+<!-- MORE -->
+<div class="screen" id="screen-more">
+  <div style="padding-top:12px;">
+    <div class="section-title">More</div>
+    <div class="action-grid">
+      <div class="action-btn green-btn" onclick="showSubScreen('buy')"><div class="btn-icon">⚖️</div><div class="btn-label">Buy Old Gold</div></div>
+      <div class="action-btn" onclick="showSubScreen('udhar')"><div class="btn-icon">📋</div><div class="btn-label">Udhar List</div></div>
+      <div class="action-btn blue-btn" onclick="showSubScreen('sahukar')"><div class="btn-icon">🏦</div><div class="btn-label">Sahukar Ledger</div></div>
+      <div class="action-btn gold-btn" onclick="showSubScreen('packets')"><div class="btn-icon">📦</div><div class="btn-label">Packets</div></div>
+      <div class="action-btn purple-btn" onclick="showSubScreen('village')"><div class="btn-icon">🏘️</div><div class="btn-label">Village-wise</div></div>
+      <div class="action-btn" onclick="showSubScreen('search')"><div class="btn-icon">🔍</div><div class="btn-label">Search Customer</div></div>
+      <div class="action-btn" onclick="showSubScreen('reports')"><div class="btn-icon">📊</div><div class="btn-label">Reports & Export</div></div>
+      <div class="action-btn red-btn" onclick="signOut()"><div class="btn-icon">🚪</div><div class="btn-label">Sign Out</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalIfBg(event)">
+  <div class="modal-sheet"><div class="modal-handle"></div><div id="modal-content"></div></div>
+</div>
+<div class="bottom-nav">
+  <button class="nav-btn active" onclick="showScreen('home',this)"><span class="icon">🏠</span>Home</button>
+  <button class="nav-btn" onclick="showScreen('sales',this)"><span class="icon">🧾</span>Sales</button>
+  <button class="nav-btn" onclick="showScreen('loans',this)"><span class="icon">🔒</span>Loans</button>
+  <button class="nav-btn" onclick="showScreen('more',this)"><span class="icon">☰</span>More</button>
+</div>
+
+</div><!-- end main-app -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════
+const CLIENT_ID = '808956970350-iktsd5h3l3rh4qpn1n4hebti5co60kqn.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+const SHEET_TABS = ['Sales','Loans','Buys','Udhars','Sahukars'];
+const SHEET_HEADERS = {
+  Sales:    ['id','date','customerName','fatherName','village','mobile','item','metal','weight','amount','payMode','createdAt'],
+  Loans:    ['id','date','customerName','fatherName','village','mobile','item','metal','weight','amount','roi','packetNo','status','packetStatus','createdAt'],
+  Buys:     ['id','date','customerName','fatherName','village','mobile','item','metal','weight','amount','createdAt'],
+  Udhars:   ['id','customerName','fatherName','village','mobile','amount','date','saleId','status','createdAt'],
+  Sahukars: ['id','date','sahukarName','goldWeight','amount','roi','linkedPackets','status','createdAt']
+};
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let accessToken = null;
+let spreadsheetId = null;
+let syncQueue = []; // pending writes when offline
+let isSyncing = false;
+
+// ═══════════════════════════════════════════════════════════
+// LOCAL DB (localStorage as cache + offline buffer)
+// ═══════════════════════════════════════════════════════════
+const DB = {
+  get: k => { try { return JSON.parse(localStorage.getItem('sjj_'+k)||'[]'); } catch(e) { return []; } },
+  set: (k,v) => { try { localStorage.setItem('sjj_'+k, JSON.stringify(v)); } catch(e) {} },
+  nextId: p => { const i=DB.get(p), max=Math.max(0,...i.map(x=>parseInt((x.id||'0').replace(/\D/g,''))||0)); return p.toUpperCase()[0]+String(max+1).padStart(3,'0'); },
+  nextPacket: () => { const a=[...DB.get('loans').map(l=>l.packetNo),...DB.get('sahukars').map(s=>s.linkedPackets||[]).flat()]; const max=Math.max(0,...a.map(p=>parseInt((p||'0').replace(/\D/g,''))||0)); return 'P'+String(max+1).padStart(3,'0'); }
+};
+
+// ═══════════════════════════════════════════════════════════
+// GOOGLE AUTH
+// ═══════════════════════════════════════════════════════════
+let tokenClient;
+
+function signIn() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { showToast('❌ Sign in failed: ' + resp.error); return; }
+      accessToken = resp.access_token;
+      localStorage.setItem('sjj_token', accessToken);
+      await initAfterSignIn();
+    }
+  });
+  tokenClient.requestAccessToken();
+}
+
+function signOut() {
+  if(!confirm('Sign out? App will still work offline.')) return;
+  if(accessToken) google.accounts.oauth2.revoke(accessToken);
+  accessToken = null; spreadsheetId = null;
+  localStorage.removeItem('sjj_token');
+  localStorage.removeItem('sjj_sheetId');
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  showToast('Signed out');
+}
+
+async function tryRestoreSession() {
+  const saved = localStorage.getItem('sjj_token');
+  const savedSheet = localStorage.getItem('sjj_sheetId');
+  if (saved) {
+    accessToken = saved;
+    spreadsheetId = savedSheet;
+    await initAfterSignIn(true);
+  } else {
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+}
+
+async function initAfterSignIn(restored=false) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'block';
+  document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+  setSyncStatus('syncing','Connecting...');
+  try {
+    await ensureSpreadsheet();
+    await loadAllFromSheets();
+    setSyncStatus('ok','Synced');
+    showToast(restored ? '✅ Session restored' : '✅ Connected to Google Sheets!');
+  } catch(e) {
+    setSyncStatus('error','Offline');
+    showToast('⚠️ Working offline – data saved locally');
+  }
+  renderDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════
+// SHEETS API HELPERS
+// ═══════════════════════════════════════════════════════════
+async function sheetsReq(method, path, body=null) {
+  const opts = { method, headers: { 'Authorization': 'Bearer '+accessToken, 'Content-Type': 'application/json' } };
+  if(body) opts.body = JSON.stringify(body);
+  const r = await fetch('https://sheets.googleapis.com/v4/spreadsheets'+path, opts);
+  if(r.status === 401) { setSyncStatus('error','Re-login'); throw new Error('auth'); }
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function driveReq(method, path, body=null) {
+  const opts = { method, headers: { 'Authorization': 'Bearer '+accessToken, 'Content-Type': 'application/json' } };
+  if(body) opts.body = JSON.stringify(body);
+  const r = await fetch('https://www.googleapis.com/drive/v3'+path, opts);
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function ensureSpreadsheet() {
+  // Check if we already have a sheet ID stored
+  if(!spreadsheetId) spreadsheetId = localStorage.getItem('sjj_sheetId');
+
+  if(spreadsheetId) {
+    // Verify it still exists
+    try {
+      await sheetsReq('GET', '/'+spreadsheetId+'?fields=spreadsheetId');
+      return;
+    } catch(e) { spreadsheetId = null; }
+  }
+
+  // Search Drive for existing sheet
+  const search = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=name='Shree Jee Jewellers Data' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false&fields=files(id,name)`,
+    { headers: { 'Authorization': 'Bearer '+accessToken } }
+  );
+  const found = await search.json();
+  if(found.files && found.files.length > 0) {
+    spreadsheetId = found.files[0].id;
+    localStorage.setItem('sjj_sheetId', spreadsheetId);
+    return;
+  }
+
+  // Create new spreadsheet
+  const created = await sheetsReq('POST', '', {
+    properties: { title: 'Shree Jee Jewellers Data' },
+    sheets: SHEET_TABS.map(t => ({ properties: { title: t } }))
+  });
+  spreadsheetId = created.spreadsheetId;
+  localStorage.setItem('sjj_sheetId', spreadsheetId);
+
+  // Write headers to all tabs
+  const data = SHEET_TABS.map(t => ({
+    range: `${t}!A1`,
+    values: [SHEET_HEADERS[t]]
+  }));
+  await sheetsReq('POST', '/'+spreadsheetId+'/values:batchUpdate', {
+    valueInputOption: 'RAW', data
+  });
+}
+
+async function loadAllFromSheets() {
+  const resp = await sheetsReq('GET', '/'+spreadsheetId+'/values:batchGet?ranges='+SHEET_TABS.map(t=>encodeURIComponent(t+'!A:Z')).join('&ranges='));
+  const ranges = resp.valueRanges || [];
+  SHEET_TABS.forEach((tab, i) => {
+    const rows = (ranges[i] && ranges[i].values) ? ranges[i].values : [];
+    if(rows.length < 2) return;
+    const headers = rows[0];
+    const records = rows.slice(1).map(row => {
+      const obj = {};
+      headers.forEach((h,j) => { obj[h] = row[j] || ''; });
+      // Parse numbers back
+      ['amount','weight','roi','goldWeight','createdAt'].forEach(f => { if(obj[f] !== undefined) obj[f] = parseFloat(obj[f])||0; });
+      if(obj.linkedPackets && typeof obj.linkedPackets === 'string') {
+        obj.linkedPackets = obj.linkedPackets ? obj.linkedPackets.split(',').filter(Boolean) : [];
+      }
+      return obj;
+    });
+    DB.set(tab.toLowerCase(), records);
+  });
+}
+
+async function appendRowToSheet(tabName, record) {
+  if(!accessToken || !spreadsheetId) return;
+  const headers = SHEET_HEADERS[tabName];
+  const row = headers.map(h => {
+    const v = record[h];
+    if(Array.isArray(v)) return v.join(',');
+    return v !== undefined ? String(v) : '';
+  });
+  await sheetsReq('POST', '/'+spreadsheetId+'/values/'+encodeURIComponent(tabName+'!A:A')+':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', {
+    values: [row]
+  });
+}
+
+async function updateSheetTab(tabName) {
+  if(!accessToken || !spreadsheetId) return;
+  const records = DB.get(tabName.toLowerCase());
+  const headers = SHEET_HEADERS[tabName];
+  const rows = [headers, ...records.map(r => headers.map(h => {
+    const v = r[h];
+    if(Array.isArray(v)) return v.join(',');
+    return v !== undefined ? String(v) : '';
+  }))];
+  // Clear then rewrite
+  await sheetsReq('POST', '/'+spreadsheetId+'/values/'+encodeURIComponent(tabName+'!A:Z')+':clear', {});
+  await sheetsReq('PUT', '/'+spreadsheetId+'/values/'+encodeURIComponent(tabName+'!A1')+'?valueInputOption=RAW', { values: rows });
+}
+
+// ═══════════════════════════════════════════════════════════
+// SYNC STATUS UI
+// ═══════════════════════════════════════════════════════════
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  const btn = document.getElementById('sync-btn');
+  if(lbl) lbl.textContent = label;
+  if(dot) { dot.className = 'sync-dot'; if(state==='error') dot.classList.add('red'); if(state==='syncing') dot.classList.add('yellow'); }
+  if(btn) { btn.className = 'sync-btn'; if(state==='syncing') btn.classList.add('syncing'); }
+}
+
+async function manualSync() {
+  if(!accessToken) { showToast('Not signed in'); return; }
+  setSyncStatus('syncing','Syncing...');
+  try {
+    await ensureSpreadsheet();
+    await loadAllFromSheets();
+    setSyncStatus('ok','Synced');
+    showToast('✅ Synced with Google Sheets!');
+    renderDashboard();
+    if(currentScreen==='sales') renderSales();
+    if(currentScreen==='loans') renderLoans();
+  } catch(e) {
+    setSyncStatus('error','Failed');
+    showToast('❌ Sync failed – check internet');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════
+const fmt = n => '₹'+Number(n||0).toLocaleString('en-IN');
+const fmtDate = d => { if(!d) return ''; return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}); };
+const today = () => new Date().toISOString().split('T')[0];
+const daysB = (d1,d2) => Math.floor((new Date(d2)-new Date(d1))/86400000);
+const calcInt = (amt,roi,from) => Math.round(amt*(roi/100)*(daysB(from,today())/30));
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const gv = id => { const e=document.getElementById(id); return e?e.value.trim():''; };
+const gf = id => { const e=document.getElementById(id); return e?parseFloat(e.value)||0:0; };
+function showToast(msg,dur=2400){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
+
+let currentScreen='home';
+function showScreen(name,btn){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  if(btn)btn.classList.add('active');
+  currentScreen=name;
+  if(name==='sales')renderSales();
+  if(name==='loans')renderLoans();
+  if(name==='home')renderDashboard();
+}
+function openModal(c){document.getElementById('modal-content').innerHTML=c;document.getElementById('modal-overlay').classList.add('open');document.body.style.overflow='hidden';}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');document.body.style.overflow='';}
+function closeModalIfBg(e){if(e.target===document.getElementById('modal-overlay'))closeModal();}
+
+// ═══════════════════════════════════════════════════════════
+// CUSTOMER FIELDS
+// ═══════════════════════════════════════════════════════════
+function villageOptions(){
+  const all=[...DB.get('sales'),...DB.get('loans'),...DB.get('buys')];
+  const vs=[...new Set(all.map(r=>r.village).filter(Boolean))];
+  return vs.map(v=>`<option value="${esc(v)}">`).join('');
+}
+function custFields(){
+  return`<div class="form-section-label">👤 Customer Details</div>
+    <div class="field"><label>Customer Name *</label><input type="text" id="f-name" placeholder="Full name" autocomplete="off"></div>
+    <div class="field"><label>Father's / Husband's Name</label><input type="text" id="f-father" placeholder="e.g. Ram Prasad" autocomplete="off"></div>
+    <div class="field-row">
+      <div class="field"><label>Village</label><input type="text" id="f-village" placeholder="Village name" list="vlist" autocomplete="off"><datalist id="vlist">${villageOptions()}</datalist></div>
+      <div class="field"><label>Mobile No.</label><input type="tel" id="f-mobile" placeholder="10 digits" maxlength="10"></div>
+    </div>`;
+}
+function custInfo(r){
+  const p=[];
+  if(r.fatherName)p.push('S/o '+esc(r.fatherName));
+  if(r.village)p.push('📍'+esc(r.village));
+  if(r.mobile)p.push('📞'+esc(r.mobile));
+  return p.length?`<div class="list-item-detail" style="margin-top:3px;">${p.join(' &bull; ')}</div>`:'';
+}
+
+// ═══════════════════════════════════════════════════════════
+// FORMS
+// ═══════════════════════════════════════════════════════════
+function openForm(type){
+  const t=today(),np=DB.nextPacket();
+  let html='';
+  if(type==='sale'){
+    html=`<div class="form-title">🧾 Add Sale</div>
+      <div class="field"><label>Date *</label><input type="date" id="f-date" value="${t}"></div>
+      ${custFields()}
+      <div class="form-section-label">📦 Item Details</div>
+      <div class="field"><label>Item *</label><input type="text" id="f-item" placeholder="e.g. Gold Ring, Silver Necklace"></div>
+      <div class="field"><label>Metal</label>
+        <div class="seg-control"><button class="seg-btn active" onclick="setSeg(this,'f-metal','Gold')">🥇 Gold</button><button class="seg-btn" onclick="setSeg(this,'f-metal','Silver')">🥈 Silver</button></div>
+        <input type="hidden" id="f-metal" value="Gold">
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Weight (g)</label><input type="number" id="f-weight" placeholder="0.00" step="0.01"></div>
+        <div class="field"><label>Amount (₹) *</label><input type="number" id="f-amount" placeholder="0"></div>
+      </div>
+      <div class="field"><label>Payment Mode</label>
+        <div class="seg-control"><button class="seg-btn active" onclick="setSeg(this,'f-pay','Cash')">💵 Cash</button><button class="seg-btn" onclick="setSeg(this,'f-pay','UPI')">📱 UPI</button><button class="seg-btn" onclick="setSeg(this,'f-pay','Udhar')">📋 Udhar</button></div>
+        <input type="hidden" id="f-pay" value="Cash">
+      </div>
+      <button class="submit-btn" onclick="saveSale()">✓ Save Sale</button>
+      <button class="cancel-btn" onclick="closeModal()">Cancel</button>`;
+  }
+  else if(type==='buy'){
+    html=`<div class="form-title">⚖️ Buy Old Gold / Silver</div>
+      <div class="field"><label>Date *</label><input type="date" id="f-date" value="${t}"></div>
+      ${custFields()}
+      <div class="form-section-label">📦 Item Details</div>
+      <div class="field"><label>Item</label><input type="text" id="f-item" placeholder="e.g. Old Ring, Bangles"></div>
+      <div class="field"><label>Metal</label>
+        <div class="seg-control"><button class="seg-btn active" onclick="setSeg(this,'f-metal','Gold')">🥇 Gold</button><button class="seg-btn" onclick="setSeg(this,'f-metal','Silver')">🥈 Silver</button></div>
+        <input type="hidden" id="f-metal" value="Gold">
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Weight (g)</label><input type="number" id="f-weight" placeholder="0.00" step="0.01"></div>
+        <div class="field"><label>Amount Paid (₹) *</label><input type="number" id="f-amount" placeholder="0"></div>
+      </div>
+      <button class="submit-btn" onclick="saveBuy()">✓ Save Purchase</button>
+      <button class="cancel-btn" onclick="closeModal()">Cancel</button>`;
+  }
+  else if(type==='loan'){
+    html=`<div class="form-title">🔒 Gold Loan (Girvi)</div>
+      <div class="field"><label>Date *</label><input type="date" id="f-date" value="${t}"></div>
+      ${custFields()}
+      <div class="form-section-label">📦 Pledge Details</div>
+      <div class="field"><label>Item Pledged *</label><input type="text" id="f-item" placeholder="e.g. Gold Chain, Bangles"></div>
+      <div class="field"><label>Metal</label>
+        <div class="seg-control"><button class="seg-btn active" onclick="setSeg(this,'f-metal','Gold')">🥇 Gold</button><button class="seg-btn" onclick="setSeg(this,'f-metal','Silver')">🥈 Silver</button></div>
+        <input type="hidden" id="f-metal" value="Gold">
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Weight (g)</label><input type="number" id="f-weight" placeholder="0.00" step="0.01"></div>
+        <div class="field"><label>Loan Amount (₹) *</label><input type="number" id="f-amount" placeholder="0"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Interest (%/month)</label><input type="number" id="f-roi" value="2" step="0.1"></div>
+        <div class="field"><label>Packet No.</label><input type="text" id="f-packet" value="${np}"></div>
+      </div>
+      <button class="submit-btn" onclick="saveLoan()">✓ Save Loan</button>
+      <button class="cancel-btn" onclick="closeModal()">Cancel</button>`;
+  }
+  else if(type==='sahukar'){
+    const rl=DB.get('loans').filter(l=>l.status==='Running');
+    html=`<div class="form-title">🏦 Sahukar Borrowing</div>
+      <div class="field"><label>Date *</label><input type="date" id="f-date" value="${t}"></div>
+      <div class="field"><label>Sahukar Name *</label><input type="text" id="f-name" placeholder="Enter sahukar name"></div>
+      <div class="field-row">
+        <div class="field"><label>Gold Given (g)</label><input type="number" id="f-weight" placeholder="0.00" step="0.01"></div>
+        <div class="field"><label>Amount Taken (₹) *</label><input type="number" id="f-amount" placeholder="0"></div>
+      </div>
+      <div class="field"><label>Interest Rate (%/month)</label><input type="number" id="f-roi" value="1.5" step="0.1"></div>
+      <div class="field"><label>Linked Packets</label>
+        <select id="f-packet" multiple style="height:90px;font-size:13px;">${rl.map(l=>`<option value="${l.packetNo}">${l.packetNo} – ${esc(l.customerName)}</option>`).join('')||'<option disabled>No running loans</option>'}</select>
+      </div>
+      <button class="submit-btn" onclick="saveSahukar()">✓ Save Entry</button>
+      <button class="cancel-btn" onclick="closeModal()">Cancel</button>`;
+  }
+  openModal(html);
+}
+function setSeg(btn,fid,val){btn.closest('.seg-control').querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');document.getElementById(fid).value=val;}
+
+// ═══════════════════════════════════════════════════════════
+// SAVE + SYNC
+// ═══════════════════════════════════════════════════════════
+async function syncRecord(tabName, record) {
+  setSyncStatus('syncing','Saving...');
+  try {
+    await appendRowToSheet(tabName, record);
+    setSyncStatus('ok','Synced ✓');
+  } catch(e) {
+    setSyncStatus('error','Saved offline');
+    showToast('📱 Saved locally – will sync when online');
+  }
+}
+
+function saveSale(){
+  const name=gv('f-name'),amount=gf('f-amount');
+  if(!name||!amount){showToast('⚠️ Name and Amount required');return;}
+  const s={id:DB.nextId('sales'),date:gv('f-date'),customerName:name,fatherName:gv('f-father'),village:gv('f-village'),mobile:gv('f-mobile'),item:gv('f-item'),metal:document.getElementById('f-metal').value,weight:gf('f-weight'),amount,payMode:document.getElementById('f-pay').value,createdAt:Date.now()};
+  const sales=DB.get('sales');sales.push(s);DB.set('sales',sales);
+  if(s.payMode==='Udhar'){const u=DB.get('udhars');const ud={id:s.id,customerName:name,fatherName:s.fatherName,village:s.village,mobile:s.mobile,amount,date:s.date,saleId:s.id,status:'Pending',createdAt:Date.now()};u.push(ud);DB.set('udhars',u);syncRecord('Udhars',ud);}
+  closeModal();showToast('✅ Sale saved!');renderDashboard();if(currentScreen==='sales')renderSales();
+  syncRecord('Sales',s);
+}
+function saveBuy(){
+  const name=gv('f-name'),amount=gf('f-amount');
+  if(!name||!amount){showToast('⚠️ Name and Amount required');return;}
+  const b={id:DB.nextId('buys'),date:gv('f-date'),customerName:name,fatherName:gv('f-father'),village:gv('f-village'),mobile:gv('f-mobile'),item:gv('f-item'),metal:document.getElementById('f-metal').value,weight:gf('f-weight'),amount,createdAt:Date.now()};
+  const buys=DB.get('buys');buys.push(b);DB.set('buys',buys);
+  closeModal();showToast('✅ Purchase saved!');renderDashboard();
+  syncRecord('Buys',b);
+}
+function saveLoan(){
+  const name=gv('f-name'),amount=gf('f-amount'),pkt=gv('f-packet');
+  if(!name||!amount||!pkt){showToast('⚠️ Name, Amount and Packet No. required');return;}
+  const l={id:DB.nextId('loans'),date:gv('f-date'),customerName:name,fatherName:gv('f-father'),village:gv('f-village'),mobile:gv('f-mobile'),item:gv('f-item'),metal:document.getElementById('f-metal').value,weight:gf('f-weight'),amount,roi:gf('f-roi')||2,packetNo:pkt,status:'Running',packetStatus:'In Shop',createdAt:Date.now()};
+  const loans=DB.get('loans');loans.push(l);DB.set('loans',loans);
+  closeModal();showToast('✅ Loan saved! Packet: '+pkt);renderDashboard();if(currentScreen==='loans')renderLoans();
+  syncRecord('Loans',l);
+}
+function saveSahukar(){
+  const name=gv('f-name'),amount=gf('f-amount');
+  if(!name||!amount){showToast('⚠️ Please fill required fields');return;}
+  const sel=document.getElementById('f-packet'),linked=Array.from(sel.selectedOptions).map(o=>o.value);
+  const e={id:DB.nextId('sahukars'),date:gv('f-date'),sahukarName:name,goldWeight:gf('f-weight'),amount,roi:gf('f-roi')||1.5,linkedPackets:linked,status:'Running',createdAt:Date.now()};
+  const sahukars=DB.get('sahukars');sahukars.push(e);DB.set('sahukars',sahukars);
+  if(linked.length){const loans=DB.get('loans');loans.forEach(l=>{if(linked.includes(l.packetNo))l.packetStatus='With Sahukar';});DB.set('loans',loans);}
+  closeModal();showToast('✅ Sahukar entry saved!');renderDashboard();
+  syncRecord('Sahukars',e);
+}
+
+// ═══════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════
+function renderDashboard(){
+  const sales=DB.get('sales'),loans=DB.get('loans'),udhars=DB.get('udhars'),sahukars=DB.get('sahukars');
+  const td=today(),tm=td.slice(0,7);
+  const tS=sales.filter(s=>s.date===td),mS=sales.filter(s=>s.date.startsWith(tm));
+  const pU=udhars.filter(u=>u.status==='Pending'),rL=loans.filter(l=>l.status==='Running'),rS=sahukars.filter(s=>s.status==='Running');
+  document.getElementById('dash-today-sales').textContent=fmt(tS.reduce((a,s)=>a+(+s.amount||0),0));
+  document.getElementById('dash-today-count').textContent=tS.length+' transaction'+(tS.length!==1?'s':'');
+  document.getElementById('dash-month-sales').textContent=fmt(mS.reduce((a,s)=>a+(+s.amount||0),0));
+  document.getElementById('dash-month-count').textContent=mS.length+' sales';
+  document.getElementById('dash-udhar').textContent=fmt(pU.reduce((a,u)=>a+(+u.amount||0),0));
+  document.getElementById('dash-udhar-count').textContent=pU.length+' customers';
+  document.getElementById('dash-loans').textContent=fmt(rL.reduce((a,l)=>a+(+l.amount||0),0));
+  document.getElementById('dash-loan-count').textContent=rL.length+' packets';
+  document.getElementById('dash-sahukar').textContent=fmt(rS.reduce((a,s)=>a+(+s.amount||0),0));
+  document.getElementById('dash-sahukar-count').textContent=rS.length+' active';
+  document.getElementById('dash-gold-shop').textContent=rL.filter(l=>l.packetStatus==='In Shop'&&l.metal==='Gold').reduce((a,l)=>a+(+l.weight||0),0).toFixed(2)+'g';
+  document.getElementById('dash-gold-sahukar').textContent=rS.reduce((a,s)=>a+(+s.goldWeight||0),0).toFixed(2)+'g';
+}
+
+// ═══════════════════════════════════════════════════════════
+// LIST RENDERS
+// ═══════════════════════════════════════════════════════════
+let salesFilter='all';
+function filterSales(f,btn){salesFilter=f;document.querySelectorAll('#sales-filter-tabs .filter-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderSales();}
+function renderSales(){
+  let s=DB.get('sales').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  if(salesFilter!=='all')s=s.filter(x=>x.payMode===salesFilter);
+  const el=document.getElementById('sales-list');
+  if(!s.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">🧾</div><p>No sales yet.</p></div>`;return;}
+  el.innerHTML=s.map(r=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.customerName)}</div>${custInfo(r)}<div class="list-item-sub">${esc(r.item)||'—'} &bull; ${r.metal} ${r.weight}g</div><div class="list-item-detail">${fmtDate(r.date)} &bull; ${r.id}</div><span class="list-item-badge ${r.payMode==='Udhar'?'badge-red':r.payMode==='UPI'?'badge-blue':'badge-green'}">${r.payMode}</span></div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div><br><button class="delete-btn" onclick="deleteSale('${r.id}')">Delete</button></div></div>`).join('');
+}
+function deleteSale(id){if(!confirm('Delete this sale?'))return;DB.set('sales',DB.get('sales').filter(s=>s.id!==id));DB.set('udhars',DB.get('udhars').filter(u=>u.saleId!==id));renderSales();renderDashboard();showToast('🗑️ Deleted');updateSheetTab('Sales').catch(()=>{});updateSheetTab('Udhars').catch(()=>{});}
+
+let loansFilter='all';
+function filterLoans(f,btn){loansFilter=f;document.querySelectorAll('#loans-filter-tabs .filter-tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderLoans();}
+function renderLoans(){
+  let loans=DB.get('loans').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  if(loansFilter!=='all')loans=loans.filter(l=>l.status===loansFilter);
+  const el=document.getElementById('loans-list');
+  if(!loans.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">🔒</div><p>No loans yet.</p></div>`;return;}
+  el.innerHTML=loans.map(l=>{
+    const interest=l.status==='Running'?calcInt(+l.amount,+l.roi,l.date):0;
+    return`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(l.customerName)}</div>${custInfo(l)}<div class="list-item-sub">${esc(l.item)||'—'} &bull; ${l.metal} ${l.weight}g</div><div class="list-item-detail"><span class="packet-id">${l.packetNo}</span> &bull; ${fmtDate(l.date)} &bull; ${daysB(l.date,today())}d</div><div class="list-item-detail">${l.roi}%/mo${l.status==='Running'?` &bull; <span style="color:var(--red);">Int: ${fmt(interest)}</span>`:''}</div><span class="list-item-badge ${l.packetStatus==='In Shop'?'badge-gold':l.packetStatus==='With Sahukar'?'badge-red':'badge-green'}">${l.packetStatus}</span></div><div class="list-item-right"><div class="list-item-amount">${fmt(l.amount)}</div><span class="list-item-badge ${l.status==='Running'?'badge-red':'badge-green'}">${l.status}</span>${l.status==='Running'?`<br><button class="close-loan-btn" onclick="closeLoan('${l.id}')">Close</button>`:''}</div></div>`;
+  }).join('');
+}
+function closeLoan(id){
+  if(!confirm('Mark loan as Closed?'))return;
+  const loans=DB.get('loans');const l=loans.find(x=>x.id===id);
+  if(l){l.status='Closed';l.packetStatus='Returned to Customer';}
+  DB.set('loans',loans);renderLoans();renderDashboard();showToast('✅ Loan closed');
+  updateSheetTab('Loans').catch(()=>{});
+}
+
+// ═══════════════════════════════════════════════════════════
+// SUB SCREENS
+// ═══════════════════════════════════════════════════════════
+function showSubScreen(type){
+  let html='';
+  if(type==='buy'){
+    const b=DB.get('buys').sort((a,c)=>(c.createdAt||0)-(a.createdAt||0));
+    html=`<div class="form-title">⚖️ Old Gold Purchases</div>
+      <button class="submit-btn" onclick="closeModal();openForm('buy')" style="margin-bottom:14px;">+ Add New Purchase</button>
+      ${b.length?b.map(r=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.customerName)}</div>${custInfo(r)}<div class="list-item-sub">${esc(r.item)||'—'} &bull; ${r.metal} ${r.weight}g</div><div class="list-item-detail">${fmtDate(r.date)}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div></div></div>`).join(''):'<div class="empty-state"><div class="empty-icon">⚖️</div><p>No purchases yet.</p></div>'}`;
+  }
+  else if(type==='udhar'){
+    const u=DB.get('udhars').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    const pend=u.filter(x=>x.status==='Pending'),clr=u.filter(x=>x.status==='Cleared');
+    html=`<div class="form-title">📋 Udhar List</div>
+      <div class="interest-display"><div class="int-label">Total Pending</div><div class="int-value">${fmt(pend.reduce((a,x)=>a+(+x.amount||0),0))} from ${pend.length} customer${pend.length!==1?'s':''}</div></div>
+      <div class="history-header">Pending (${pend.length})</div>
+      ${pend.length?pend.map(r=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.customerName)}</div>${custInfo(r)}<div class="list-item-sub">${fmtDate(r.date)} &bull; ${daysB(r.date,today())} days ago</div><button class="pay-btn" onclick="markUdharPaid('${r.id}')">✓ Mark Paid</button></div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div><span class="list-item-badge badge-red">Pending</span></div></div>`).join(''):'<div style="color:var(--muted);text-align:center;padding:16px;">No pending udhar 🎉</div>'}
+      ${clr.length?`<div class="history-header" style="margin-top:14px;">Cleared (${clr.length})</div>`+clr.map(r=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.customerName)}</div>${custInfo(r)}<div class="list-item-sub">${fmtDate(r.date)}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div><span class="list-item-badge badge-green">Cleared</span></div></div>`).join(''):''}`;
+  }
+  else if(type==='sahukar'){
+    const s=DB.get('sahukars').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    html=`<div class="form-title">🏦 Sahukar Ledger</div>
+      <button class="submit-btn" onclick="closeModal();openForm('sahukar')" style="margin-bottom:14px;">+ Add Entry</button>
+      ${s.length?s.map(r=>{const interest=r.status==='Running'?calcInt(+r.amount,+r.roi,r.date):0;return`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.sahukarName)}</div><div class="list-item-sub">${r.goldWeight}g gold &bull; ${r.roi}%/mo &bull; ${daysB(r.date,today())} days</div><div class="list-item-detail">${fmtDate(r.date)} &bull; ${r.id}</div>${r.linkedPackets&&r.linkedPackets.length?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">Packets: ${Array.isArray(r.linkedPackets)?r.linkedPackets.join(', '):r.linkedPackets}</div>`:''} ${r.status==='Running'?`<div style="font-size:12px;color:var(--red);margin-top:3px;">Interest: ${fmt(interest)}</div>`:''}<span class="list-item-badge ${r.status==='Running'?'badge-red':'badge-green'}">${r.status}</span></div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div>${r.status==='Running'?`<br><button class="close-loan-btn" onclick="closeSahukar('${r.id}')">Close</button>`:''}</div></div>`;}).join(''):'<div class="empty-state"><div class="empty-icon">🏦</div><p>No entries yet.</p></div>'}`;
+  }
+  else if(type==='packets'){
+    const loans=DB.get('loans');
+    const gr={a:loans.filter(l=>l.packetStatus==='In Shop'),b:loans.filter(l=>l.packetStatus==='With Sahukar'),c:loans.filter(l=>l.packetStatus==='Returned to Customer')};
+    const pr=arr=>arr.map(l=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name"><span class="packet-id">${l.packetNo}</span> &nbsp;${esc(l.customerName)}</div>${custInfo(l)}<div class="list-item-sub">${esc(l.item)||'—'} &bull; ${l.metal} ${l.weight}g</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(l.amount)}</div></div></div>`).join('');
+    html=`<div class="form-title">📦 Packet Tracker</div>
+      <div class="history-header" style="color:var(--green);">IN SHOP (${gr.a.length})</div>${gr.a.length?pr(gr.a):'<div style="color:var(--muted);padding:8px 0;">None</div>'}
+      <div class="history-header" style="color:var(--red);margin-top:12px;">WITH SAHUKAR (${gr.b.length})</div>${gr.b.length?pr(gr.b):'<div style="color:var(--muted);padding:8px 0;">None</div>'}
+      <div class="history-header" style="margin-top:12px;">RETURNED (${gr.c.length})</div>${gr.c.length?pr(gr.c):'<div style="color:var(--muted);padding:8px 0;">None</div>'}`;
+  }
+  else if(type==='village'){
+    html=`<div class="form-title">🏘️ Village-wise Customers</div>
+      <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Filter village..." oninput="filterVillage(this.value)" style="padding-left:42px;"></div>
+      <div id="vlist-content">${buildVillageList('')}</div>`;
+  }
+  else if(type==='search'){
+    html=`<div class="form-title">🔍 Search Customer</div>
+      <div class="search-box"><span class="search-icon">🔍</span><input type="text" placeholder="Name, village, father, or mobile..." oninput="searchCustomer(this.value)" style="padding-left:42px;" autofocus></div>
+      <div id="search-results"><div class="empty-state"><div class="empty-icon">🔍</div><p>Type to search all records</p></div></div>`;
+  }
+  else if(type==='reports'){
+    const s=DB.get('sales'),l=DB.get('loans'),u=DB.get('udhars'),b=DB.get('buys'),sa=DB.get('sahukars');
+    const sheetUrl = spreadsheetId ? `https://docs.google.com/spreadsheets/d/${spreadsheetId}` : null;
+    html=`<div class="form-title">📊 Reports &amp; Export</div>
+      ${sheetUrl?`<a href="${sheetUrl}" target="_blank" style="display:block;background:linear-gradient(135deg,#1E7D45,#2ECC71);color:#fff;text-align:center;padding:14px;border-radius:14px;font-size:15px;font-weight:700;text-decoration:none;margin-bottom:14px;">📊 Open Google Sheet ↗</a>`:''}
+      <div class="stat-grid" style="margin-bottom:14px;">
+        <div class="stat-card"><div class="stat-label">Total Sales</div><div class="stat-value">${s.length}</div><div class="stat-sub">${fmt(s.reduce((a,x)=>a+(+x.amount||0),0))}</div></div>
+        <div class="stat-card"><div class="stat-label">Total Loans</div><div class="stat-value">${l.length}</div><div class="stat-sub">${fmt(l.reduce((a,x)=>a+(+x.amount||0),0))}</div></div>
+        <div class="stat-card"><div class="stat-label">Old Gold Bought</div><div class="stat-value">${b.length}</div><div class="stat-sub">${fmt(b.reduce((a,x)=>a+(+x.amount||0),0))}</div></div>
+        <div class="stat-card"><div class="stat-label">Sahukar Entries</div><div class="stat-value">${sa.length}</div><div class="stat-sub">${fmt(sa.reduce((a,x)=>a+(+x.amount||0),0))}</div></div>
+      </div>
+      <button class="export-btn" onclick="exportCSV('sales')">⬇️ Export Sales CSV</button>
+      <button class="export-btn" onclick="exportCSV('loans')">⬇️ Export Loans CSV</button>
+      <button class="export-btn" onclick="exportCSV('buys')">⬇️ Export Old Gold Purchases</button>
+      <button class="export-btn" onclick="exportCSV('sahukars')">⬇️ Export Sahukar Ledger</button>
+      <button class="export-btn" onclick="exportCSV('udhars')">⬇️ Export Udhar List</button>
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+        <button onclick="if(confirm('Delete ALL local data?'))clearAllData()" style="width:100%;padding:13px;background:#FAD7D4;color:var(--red);border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">⚠️ Clear Local Data</button>
+      </div>`;
+  }
+  openModal(html);
+}
+
+function buildVillageList(filterQ){
+  const sales=DB.get('sales'),loans=DB.get('loans'),buys=DB.get('buys'),udhars=DB.get('udhars');
+  const all=[...sales.map(r=>({...r,type:'sale'})),...loans.map(r=>({...r,type:'loan'})),...buys.map(r=>({...r,type:'buy'}))];
+  const vMap={};
+  all.forEach(r=>{const v=(r.village||'').trim()||'(No Village)';if(!vMap[v])vMap[v]=[];vMap[v].push(r);});
+  let villages=Object.keys(vMap).sort();
+  if(filterQ)villages=villages.filter(v=>v.toLowerCase().includes(filterQ.toLowerCase()));
+  if(!villages.length)return'<div class="empty-state"><div class="empty-icon">🏘️</div><p>No village records yet.</p></div>';
+  return villages.map(v=>{
+    const records=vMap[v];
+    const cMap={};
+    records.forEach(r=>{const key=(r.customerName||'').trim().toLowerCase()||'unknown';if(!cMap[key])cMap[key]={name:r.customerName||'Unknown',father:r.fatherName,mobile:r.mobile,records:[]};cMap[key].records.push(r);});
+    const customers=Object.values(cMap).sort((a,b)=>a.name.localeCompare(b.name));
+    const totalAmt=records.reduce((a,r)=>a+(+r.amount||0),0);
+    const vId='vg_'+v.replace(/\W/g,'_')+Math.random().toString(36).slice(2,6);
+    const custHTML=customers.map(c=>{
+      const salesR=c.records.filter(r=>r.type==='sale'),loansR=c.records.filter(r=>r.type==='loan'),buysR=c.records.filter(r=>r.type==='buy');
+      const runL=loansR.filter(r=>r.status==='Running');
+      const pendU=udhars.filter(u=>(u.customerName||'').toLowerCase().trim()===(c.name||'').toLowerCase().trim()&&u.status==='Pending');
+      return`<div class="village-customer"><div class="vc-name">${esc(c.name)}</div><div class="vc-meta">${c.father?'S/o '+esc(c.father):''}${c.father&&c.mobile?' &bull; ':''}${c.mobile?'📞 '+esc(c.mobile):''}</div><div class="vc-chips">${salesR.length?`<span class="vc-chip badge-green">🧾 ${salesR.length} Sale${salesR.length>1?'s':''} &bull; ${fmt(salesR.reduce((a,r)=>a+(+r.amount||0),0))}</span>`:''}${runL.length?`<span class="vc-chip badge-red">🔒 ${runL.length} Active Loan${runL.length>1?'s':''} &bull; ${fmt(runL.reduce((a,r)=>a+(+r.amount||0),0))}</span>`:''}${(loansR.length-runL.length)>0?`<span class="vc-chip badge-green">✅ ${loansR.length-runL.length} Closed</span>`:''}${buysR.length?`<span class="vc-chip badge-gold">⚖️ ${buysR.length} Purchase${buysR.length>1?'s':''}</span>`:''}${pendU.length?`<span class="vc-chip badge-purple">📋 Udhar: ${fmt(pendU.reduce((a,u)=>a+(+u.amount||0),0))}</span>`:''}</div></div>`;
+    }).join('');
+    return`<div class="village-card"><div class="village-header" onclick="document.getElementById('${vId}').classList.toggle('open')"><div class="village-name">🏘️ ${esc(v)}</div><div class="village-stats">${customers.length} customer${customers.length>1?'s':''}<br><strong style="color:var(--gold-dark);">${fmt(totalAmt)}</strong></div></div><div class="village-body" id="${vId}">${custHTML}</div></div>`;
+  }).join('');
+}
+function filterVillage(q){const el=document.getElementById('vlist-content');if(el)el.innerHTML=buildVillageList(q);}
+
+function searchCustomer(q){
+  if(!q||q.length<2){document.getElementById('search-results').innerHTML='<div style="color:var(--muted);text-align:center;padding:16px;font-size:13px;">Type at least 2 characters</div>';return;}
+  const ql=q.toLowerCase();
+  const m=r=>(r.customerName||'').toLowerCase().includes(ql)||(r.village||'').toLowerCase().includes(ql)||(r.mobile||'').includes(ql)||(r.fatherName||'').toLowerCase().includes(ql);
+  const s=DB.get('sales').filter(m),l=DB.get('loans').filter(m),b=DB.get('buys').filter(m),u=DB.get('udhars').filter(m);
+  let html='';
+  if(!s.length&&!l.length&&!b.length&&!u.length)html='<div class="empty-state"><div class="empty-icon">😶</div><p>No records found.</p></div>';
+  if(s.length)html+=`<div class="history-header">Sales (${s.length})</div>`+s.map(r=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.customerName)}</div>${custInfo(r)}<div class="list-item-sub">${esc(r.item)||'—'} &bull; ${fmtDate(r.date)}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div><span class="list-item-badge ${r.payMode==='Udhar'?'badge-red':'badge-green'}">${r.payMode}</span></div></div>`).join('');
+  if(l.length)html+=`<div class="history-header" style="margin-top:12px;">Gold Loans (${l.length})</div>`+l.map(r=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.customerName)}</div>${custInfo(r)}<div class="list-item-sub"><span class="packet-id">${r.packetNo}</span> &bull; ${esc(r.item)||'—'} &bull; ${fmtDate(r.date)}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div><span class="list-item-badge ${r.status==='Running'?'badge-red':'badge-green'}">${r.status}</span></div></div>`).join('');
+  if(b.length)html+=`<div class="history-header" style="margin-top:12px;">Old Gold Bought (${b.length})</div>`+b.map(r=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.customerName)}</div>${custInfo(r)}<div class="list-item-sub">${esc(r.item)||'—'} &bull; ${r.metal} ${r.weight}g &bull; ${fmtDate(r.date)}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div></div></div>`).join('');
+  if(u.length)html+=`<div class="history-header" style="margin-top:12px;">Udhar (${u.length})</div>`+u.map(r=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.customerName)}</div>${custInfo(r)}<div class="list-item-sub">${fmtDate(r.date)} &bull; ${daysB(r.date,today())} days</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div><span class="list-item-badge ${r.status==='Pending'?'badge-red':'badge-green'}">${r.status}</span></div></div>`).join('');
+  document.getElementById('search-results').innerHTML=html;
+}
+
+function markUdharPaid(id){
+  if(!confirm('Mark as paid?'))return;
+  const u=DB.get('udhars');const i=u.find(x=>x.id===id);if(i)i.status='Cleared';
+  DB.set('udhars',u);showToast('✅ Udhar marked paid!');renderDashboard();showSubScreen('udhar');
+  updateSheetTab('Udhars').catch(()=>{});
+}
+function closeSahukar(id){
+  if(!confirm('Close this entry?'))return;
+  const s=DB.get('sahukars'),item=s.find(x=>x.id===id);
+  if(item){item.status='Closed';if(item.linkedPackets&&item.linkedPackets.length){const loans=DB.get('loans');loans.forEach(l=>{if((Array.isArray(item.linkedPackets)?item.linkedPackets:item.linkedPackets.split(',')).includes(l.packetNo)&&l.packetStatus==='With Sahukar')l.packetStatus='In Shop';});DB.set('loans',loans);}}
+  DB.set('sahukars',s);showToast('✅ Entry closed');renderDashboard();showSubScreen('sahukar');
+  updateSheetTab('Sahukars').catch(()=>{});updateSheetTab('Loans').catch(()=>{});
+}
+function exportCSV(type){
+  const data=DB.get(type);if(!data.length){showToast('No data to export');return;}
+  const keys=Object.keys(data[0]);
+  const csv=[keys.join(','),...data.map(row=>keys.map(k=>'"'+(String(row[k]||'').replace(/"/g,'""'))+'"').join(','))].join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`SJJ_${type}_${today()}.csv`;a.click();URL.revokeObjectURL(url);showToast('✅ CSV downloaded!');
+}
+function clearAllData(){['sales','loans','buys','udhars','sahukars'].forEach(k=>localStorage.removeItem('sjj_'+k));closeModal();renderDashboard();showToast('🗑️ Local data cleared');}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  // Hide both initially
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'none';
+  // Try restore session after GSI loads
+  setTimeout(tryRestoreSession, 800);
+});
+</script>
+</body>
+</html>
