@@ -200,9 +200,12 @@ input[type="date"]{color:var(--text);}
 <!-- MAIN APP -->
 <div id="main-app" style="display:none;">
 <!-- RE-LOGIN BANNER -->
-<div id="relogin-banner" style="display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#C0392B;color:#fff;padding:12px 16px;z-index:500;align-items:center;justify-content:space-between;gap:10px;">
-  <div style="font-size:13px;font-weight:600;">🔒 Session expired. Please reconnect.</div>
-  <button onclick="relogin()" style="background:#fff;color:#C0392B;border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">Reconnect</button>
+<div id="relogin-banner" style="display:none;position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#C0392B;color:#fff;padding:14px 16px;z-index:500;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 4px 16px rgba(0,0,0,0.3);">
+  <div>
+    <div style="font-size:14px;font-weight:700;">🔒 Reconnect to Google</div>
+    <div style="font-size:11px;opacity:0.85;margin-top:2px;">Tap to sync data to Google Sheets</div>
+  </div>
+  <button onclick="relogin()" style="background:#fff;color:#C0392B;border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">🔄 Reconnect</button>
 </div>
 <div class="topbar">
   <div style="font-size:22px;">💍</div>
@@ -210,7 +213,7 @@ input[type="date"]{color:var(--text);}
     <div class="topbar-title">Shree Jee Jewellers</div>
     <div class="topbar-sub" id="topbarDate"></div>
   </div>
-  <button class="sync-btn" id="sync-btn" onclick="manualSync()">
+  <button class="sync-btn" id="sync-btn" onclick="handleSyncClick()">
     <div class="sync-dot" id="sync-dot"></div>
     <span id="sync-label">Synced</span>
   </button>
@@ -400,31 +403,53 @@ function signIn(){
       await initAfterSignIn();
     }
   });
-  tokenClient.requestAccessToken({prompt:''});
+  tokenClient.requestAccessToken({prompt:'select_account'});
 }
 
 async function refreshTokenIfNeeded(){
-  // If token is expired or expiring in next 2 minutes, get a new one silently
-  if(Date.now() > tokenExpiry - (2*60*1000)){
-    return new Promise((resolve)=>{
-      try{
-        tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id:CLIENT_ID,
-          scope:SCOPES,
-          callback:(resp)=>{
-            if(resp.error){ resolve(false); return; }
-            accessToken=resp.access_token;
-            tokenExpiry = Date.now() + (55*60*1000);
-            localStorage.setItem('sjj_token',accessToken);
-            localStorage.setItem('sjj_token_expiry',tokenExpiry);
-            resolve(true);
-          }
-        });
-        tokenClient.requestAccessToken({prompt:''});
-      }catch(e){ resolve(false); }
-    });
+  // If token is NOT expired, use it as-is
+  if(accessToken && Date.now() < tokenExpiry - (2*60*1000)){
+    return true;
   }
-  return true;
+  // No token at all — cannot refresh silently, need login
+  if(!accessToken){
+    showReloginBanner();
+    return false;
+  }
+  // Token is expired — try silent refresh first
+  return new Promise((resolve)=>{
+    try{
+      const tc = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback:(resp)=>{
+          if(resp.error){
+            // Silent refresh failed — show reconnect banner but don't block the app
+            showReloginBanner();
+            resolve(false);
+            return;
+          }
+          accessToken = resp.access_token;
+          tokenExpiry = Date.now() + (55*60*1000);
+          localStorage.setItem('sjj_token', accessToken);
+          localStorage.setItem('sjj_token_expiry', tokenExpiry);
+          hideReloginBanner();
+          resolve(true);
+        },
+        error_callback:(err)=>{
+          // This fires for user_logged_out, immediate_failed etc.
+          showReloginBanner();
+          resolve(false);
+        }
+      });
+      // Try silent — prompt:'' means no popup, just silent check
+      tc.requestAccessToken({prompt:''});
+      tokenClient = tc;
+    }catch(e){
+      showReloginBanner();
+      resolve(false);
+    }
+  });
 }
 
 function signOut(){
@@ -439,16 +464,69 @@ function signOut(){
 }
 
 async function tryRestoreSession(){
-  const saved=localStorage.getItem('sjj_token');
-  const savedExpiry=parseInt(localStorage.getItem('sjj_token_expiry')||'0');
-  const savedSheet=localStorage.getItem('sjj_sheetId');
-  if(saved){
-    accessToken=saved;
-    tokenExpiry=savedExpiry;
-    spreadsheetId=savedSheet;
+  const saved       = localStorage.getItem('sjj_token');
+  const savedExpiry = parseInt(localStorage.getItem('sjj_token_expiry')||'0');
+  const savedSheet  = localStorage.getItem('sjj_sheetId');
+  const now         = Date.now();
+  const TWO_HOURS   = 2 * 60 * 60 * 1000;
+
+  // Case 1: No token at all → fresh login required
+  if(!saved){
+    showLoginScreen();
+    return;
+  }
+
+  // Case 2: Token exists and is still fresh (not expired)
+  if(savedExpiry > now){
+    accessToken   = saved;
+    tokenExpiry   = savedExpiry;
+    spreadsheetId = savedSheet;
     await initAfterSignIn(true);
-  } else {
-    document.getElementById('login-screen').style.display='flex';
+    return;
+  }
+
+  // Case 3: Token expired BUT recently (< 2 hours) → try silent refresh
+  if(savedExpiry > 0 && (now - savedExpiry) < TWO_HOURS){
+    // Keep token in memory temporarily, show app with local data
+    accessToken   = saved;
+    tokenExpiry   = savedExpiry;
+    spreadsheetId = savedSheet;
+    // Show app immediately with local data
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('main-app').style.display='block';
+    document.getElementById('topbarDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+    setSyncStatus('syncing','Refreshing...');
+    renderDashboard();
+    // Try silent refresh in background
+    const refreshed = await refreshTokenIfNeeded();
+    if(refreshed){
+      try{
+        await ensureSpreadsheet();
+        await loadAllFromSheets();
+        setSyncStatus('ok','Synced');
+        hideReloginBanner();
+        renderDashboard();
+      }catch(e){
+        setSyncStatus('error','Offline');
+      }
+    }
+    // If silent refresh failed, banner is already shown by refreshTokenIfNeeded
+    return;
+  }
+
+  // Case 4: Token expired long ago (> 2 hours) → show login screen cleanly
+  // Clear stale token to avoid confusion
+  localStorage.removeItem('sjj_token');
+  localStorage.removeItem('sjj_token_expiry');
+  showLoginScreen('Your session has expired. Please sign in again.');
+}
+
+function showLoginScreen(message=''){
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('main-app').style.display='none';
+  if(message){
+    const sub = document.querySelector('.login-sub');
+    if(sub) sub.textContent = message;
   }
 }
 
@@ -456,25 +534,27 @@ async function initAfterSignIn(restored=false){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('main-app').style.display='block';
   document.getElementById('topbarDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+
+  // Token is guaranteed fresh when this is called from signIn()
+  // or from tryRestoreSession Case 2/3
   setSyncStatus('syncing','Connecting...');
+  renderDashboard(); // show local data immediately
   try{
-    // Try to refresh token if needed before connecting
-    await refreshTokenIfNeeded();
     await ensureSpreadsheet();
     await loadAllFromSheets();
     setSyncStatus('ok','Synced');
+    hideReloginBanner();
     showToast(restored?'✅ Session restored':'✅ Connected!');
-  } catch(e){
-    // If 401, token has expired — show re-login prompt
-    if(e.message&&e.message.includes('401')){
-      setSyncStatus('error','Login expired');
+    renderDashboard();
+  }catch(e){
+    if(e.message&&(e.message.includes('401')||e.message.includes('403'))){
+      setSyncStatus('error','Session expired');
       showReloginBanner();
-    } else {
+    }else{
       setSyncStatus('error','Offline');
       showToast('⚠️ Working offline – data saved locally');
     }
   }
-  renderDashboard();
 }
 
 function showReloginBanner(){
@@ -489,27 +569,42 @@ async function relogin(){
   hideReloginBanner();
   setSyncStatus('syncing','Reconnecting...');
   tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id:CLIENT_ID,
-    scope:SCOPES,
-    callback:async(resp)=>{
-      if(resp.error){setSyncStatus('error','Failed');showToast('❌ Re-login failed');return;}
-      accessToken=resp.access_token;
-      tokenExpiry=Date.now()+(55*60*1000);
-      localStorage.setItem('sjj_token',accessToken);
-      localStorage.setItem('sjj_token_expiry',tokenExpiry);
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: async(resp)=>{
+      if(resp.error){
+        setSyncStatus('error','Failed');
+        showToast('❌ Re-login failed: ' + resp.error);
+        showReloginBanner(); // keep banner visible
+        return;
+      }
+      accessToken = resp.access_token;
+      tokenExpiry = Date.now() + (55*60*1000);
+      localStorage.setItem('sjj_token', accessToken);
+      localStorage.setItem('sjj_token_expiry', tokenExpiry);
+      hideReloginBanner();
       try{
+        setSyncStatus('syncing','Syncing...');
         await ensureSpreadsheet();
         await loadAllFromSheets();
-        setSyncStatus('ok','Synced');
-        showToast('✅ Reconnected!');
+        setSyncStatus('ok','Synced ✓');
+        showToast('✅ Reconnected & synced!');
         renderDashboard();
+        if(currentScreen==='sales') renderSales();
+        if(currentScreen==='loans') renderLoans();
       }catch(e){
-        setSyncStatus('error','Failed');
-        showToast('❌ Could not reconnect');
+        setSyncStatus('error','Sync failed');
+        showToast('⚠️ Connected but sync failed – try again');
       }
+    },
+    error_callback:(err)=>{
+      setSyncStatus('error','Failed');
+      showReloginBanner();
+      showToast('❌ Could not reconnect: ' + (err.type||'unknown error'));
     }
   });
-  tokenClient.requestAccessToken({prompt:''});
+  // Use 'select_account' if silent fails — shows account picker
+  tokenClient.requestAccessToken({prompt:'consent'});
 }
 
 // ═══════════════════════════════════════════
@@ -575,7 +670,21 @@ function setSyncStatus(state,label){
   const dot=document.getElementById('sync-dot'),lbl=document.getElementById('sync-label'),btn=document.getElementById('sync-btn');
   if(lbl)lbl.textContent=label;
   if(dot){dot.className='sync-dot';if(state==='error')dot.classList.add('red');if(state==='syncing')dot.classList.add('yellow');}
-  if(btn){btn.className='sync-btn';if(state==='syncing')btn.classList.add('syncing');}
+  if(btn){
+    btn.className='sync-btn';
+    if(state==='syncing')btn.classList.add('syncing');
+    // Make failed state clickable with hint
+    btn.title = state==='error' ? 'Tap to reconnect' : '';
+  }
+}
+function handleSyncClick(){
+  // If token is stale, clicking the failed button should trigger relogin
+  if(!accessToken || Date.now() > tokenExpiry - (2*60*1000)){
+    showReloginBanner();
+    relogin();
+  } else {
+    manualSync();
+  }
 }
 async function manualSync(){
   if(!accessToken){showToast('Not signed in');return;}
