@@ -151,6 +151,31 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .autocomplete-name{font-weight:700;color:var(--text);}
 .autocomplete-meta{font-size:11px;color:var(--muted);}
 input[type="date"]{color:var(--text);}
+/* CLICKABLE DASHBOARD CARDS */
+.stat-card.clickable{cursor:pointer;transition:all 0.15s;position:relative;}
+.stat-card.clickable:active{transform:scale(0.97);background:#FDF0D0;}
+.stat-card.clickable::after{content:'›';position:absolute;top:50%;right:10px;transform:translateY(-50%);font-size:18px;color:var(--gold);opacity:0.6;}
+.gold-bar.clickable{cursor:pointer;transition:opacity 0.15s;}
+.gold-bar.clickable:active{opacity:0.85;}
+/* RECONCILIATION */
+.recon-section{background:var(--card);border-radius:14px;border:1px solid var(--border);padding:14px 16px;margin-bottom:12px;}
+.recon-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.recon-row:last-child{border-bottom:none;}
+.recon-label{color:var(--muted);}
+.recon-val{font-weight:700;}
+.recon-ok{color:var(--green);}
+.recon-warn{color:#B8860B;}
+.recon-bad{color:var(--red);}
+.indicator{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;}
+.indicator.green{background:var(--green);}
+.indicator.yellow{background:#DAA520;}
+.indicator.red{background:var(--red);}
+/* VENDOR LEDGER */
+.ledger-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px;gap:6px;}
+.ledger-row:last-child{border-bottom:none;}
+.ledger-type{font-weight:700;font-size:11px;padding:2px 8px;border-radius:10px;}
+.ledger-purchase{background:#FFF0D0;color:var(--gold-dark);}
+.ledger-payment{background:#D4F4E2;color:var(--green);}
 /* REPORTS */
 .report-tab-bar{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:14px;scrollbar-width:none;}
 .report-tab-bar::-webkit-scrollbar{display:none;}
@@ -223,53 +248,56 @@ input[type="date"]{color:var(--text);}
   <div style="padding-top:12px;">
     <div class="greeting">Good day 🙏</div>
     <div class="section-title">Today's Summary</div>
-    <div class="gold-bar">
+    <div class="gold-bar clickable" onclick="dashDrill('today-sales')">
       <div>
-        <div class="gold-bar-label">Today's Sales</div>
+        <div class="gold-bar-label">Today's Sales ›</div>
         <div class="gold-bar-value" id="dash-today-sales">₹0</div>
         <div class="gold-bar-unit" id="dash-today-count">0 transactions</div>
       </div>
       <div style="font-size:42px;">🏪</div>
     </div>
     <div class="stat-grid">
-      <div class="stat-card"><div class="stat-label">Monthly Sales</div><div class="stat-value green" id="dash-month-sales">₹0</div><div class="stat-sub" id="dash-month-count">0 sales</div></div>
-      <div class="stat-card"><div class="stat-label">Udhar Pending</div><div class="stat-value red" id="dash-udhar">₹0</div><div class="stat-sub" id="dash-udhar-count">0 customers</div></div>
-      <div class="stat-card"><div class="stat-label">Active Loans</div><div class="stat-value blue" id="dash-loans">₹0</div><div class="stat-sub" id="dash-loan-count">0 packets</div></div>
-      <div class="stat-card"><div class="stat-label">Sahukar Dues</div><div class="stat-value red" id="dash-sahukar">₹0</div><div class="stat-sub" id="dash-sahukar-count">0 active</div></div>
+      <div class="stat-card clickable" onclick="dashDrill('month-sales')"><div class="stat-label">Monthly Sales</div><div class="stat-value green" id="dash-month-sales">₹0</div><div class="stat-sub" id="dash-month-count">0 sales</div></div>
+      <div class="stat-card clickable" onclick="dashDrill('udhar')"><div class="stat-label">Udhar Pending</div><div class="stat-value red" id="dash-udhar">₹0</div><div class="stat-sub" id="dash-udhar-count">0 customers</div></div>
+      <div class="stat-card clickable" onclick="dashDrill('loans')"><div class="stat-label">Active Loans</div><div class="stat-value blue" id="dash-loans">₹0</div><div class="stat-sub" id="dash-loan-count">0 packets</div></div>
+      <div class="stat-card clickable" onclick="dashDrill('sahukar')"><div class="stat-label">Sahukar Dues</div><div class="stat-value red" id="dash-sahukar">₹0</div><div class="stat-sub" id="dash-sahukar-count">0 active</div></div>
     </div>
     <div class="stat-grid">
-      <div class="stat-card"><div class="stat-label">Gold in Shop</div><div class="stat-value" id="dash-gold-shop">0g</div></div>
-      <div class="stat-card"><div class="stat-label">Gold w/ Sahukar</div><div class="stat-value red" id="dash-gold-sahukar">0g</div></div>
+      <div class="stat-card clickable" onclick="dashDrill('gold-shop')"><div class="stat-label">🥇 Gold in Shop</div><div class="stat-value" id="dash-gold-shop">0g</div><div class="stat-sub">Pledged packets</div></div>
+      <div class="stat-card clickable" onclick="dashDrill('gold-sahukar')"><div class="stat-label">🥇 Gold w/ Sahukar</div><div class="stat-value red" id="dash-gold-sahukar">0g</div><div class="stat-sub">Pledged to sahukar</div></div>
+      <div class="stat-card clickable" onclick="dashDrill('gold-customers')"><div class="stat-label">🥇 Gold w/ Customers</div><div class="stat-value" id="dash-gold-cust">0g</div><div class="stat-sub">Active loan packets</div></div>
+      <div class="stat-card clickable" onclick="dashDrill('silver-shop')"><div class="stat-label">🥈 Silver in Shop</div><div class="stat-value blue" id="dash-silver-shop">0g</div><div class="stat-sub">Pledged packets</div></div>
+      <div class="stat-card clickable" onclick="dashDrill('silver-sahukar')"><div class="stat-label">🥈 Silver w/ Sahukar</div><div class="stat-value red" id="dash-silver-sahukar">0g</div><div class="stat-sub">Pledged to sahukar</div></div>
+      <div class="stat-card clickable" onclick="dashDrill('silver-customers')"><div class="stat-label">🥈 Silver w/ Customers</div><div class="stat-value blue" id="dash-silver-cust">0g</div><div class="stat-sub">Active loan packets</div></div>
     </div>
     <div class="stat-grid">
-      <div class="stat-card"><div class="stat-label">🥇 Gold Stock</div><div class="stat-value green" id="dash-stock-gold">0g</div><div class="stat-sub">Vendor purchases</div></div>
-      <div class="stat-card"><div class="stat-label">🥈 Silver Stock</div><div class="stat-value blue" id="dash-stock-silver">0g</div><div class="stat-sub">Vendor purchases</div></div>
+      <div class="stat-card clickable" onclick="showSubScreen('inventory')"><div class="stat-label">🥇 Gold Stock</div><div class="stat-value green" id="dash-stock-gold">0g</div><div class="stat-sub">Vendor purchases</div></div>
+      <div class="stat-card clickable" onclick="showSubScreen('inventory')"><div class="stat-label">🥈 Silver Stock</div><div class="stat-value blue" id="dash-stock-silver">0g</div><div class="stat-sub">Vendor purchases</div></div>
     </div>
     <div class="stat-grid">
-      <div class="stat-card"><div class="stat-label">💰 Interest Earned</div><div class="stat-value green" id="dash-interest">₹0</div><div class="stat-sub">Active loans till today</div></div>
-      <div class="stat-card"><div class="stat-label">📋 Overdue Loans</div><div class="stat-value red" id="dash-overdue">0</div><div class="stat-sub">Loans &gt;90 days</div></div>
+      <div class="stat-card clickable" onclick="dashDrill('overdue-loans')"><div class="stat-label">💰 Interest Earned</div><div class="stat-value green" id="dash-interest">₹0</div><div class="stat-sub">Active loans till today</div></div>
+      <div class="stat-card clickable" onclick="dashDrill('overdue-loans')"><div class="stat-label">📋 Overdue Loans</div><div class="stat-value red" id="dash-overdue">0</div><div class="stat-sub">Loans &gt;90 days</div></div>
     </div>
     <!-- OWNER FINANCIAL DASHBOARD -->
     <div class="section-title" style="margin-top:8px;">💼 Financial Position</div>
-    <div style="background:linear-gradient(135deg,#1A3A1A,#1E7D45);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;color:#fff;">
-      <div style="font-size:10px;opacity:0.7;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">CASH FLOW TODAY</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div><div style="font-size:10px;opacity:0.7;">In</div><div style="font-size:18px;font-weight:700;" id="dash-cash-in">₹0</div></div>
-        <div style="font-size:20px;opacity:0.5;">↔</div>
-        <div style="text-align:right;"><div style="font-size:10px;opacity:0.7;">Out</div><div style="font-size:18px;font-weight:700;" id="dash-cash-out">₹0</div></div>
+    <div class="gold-bar clickable" style="background:linear-gradient(135deg,#1A3A1A,#1E7D45);" onclick="showDailyReconciliation()">
+      <div>
+        <div class="gold-bar-label">CASH FLOW TODAY ›</div>
+        <div style="display:flex;gap:20px;margin-top:4px;">
+          <div><div style="font-size:10px;opacity:0.7;">In</div><div style="font-size:16px;font-weight:700;" id="dash-cash-in">₹0</div></div>
+          <div><div style="font-size:10px;opacity:0.7;">Out</div><div style="font-size:16px;font-weight:700;" id="dash-cash-out">₹0</div></div>
+          <div><div style="font-size:10px;opacity:0.7;">Net</div><div style="font-size:16px;font-weight:700;" id="dash-net-cash">₹0</div></div>
+        </div>
       </div>
-      <div style="border-top:1px solid rgba(255,255,255,0.2);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;">
-        <span style="font-size:11px;opacity:0.7;">Net Cash Flow</span>
-        <span style="font-size:15px;font-weight:700;" id="dash-net-cash">₹0</span>
-      </div>
+      <div style="font-size:30px;">📊</div>
     </div>
     <div class="stat-grid">
-      <div class="stat-card"><div class="stat-label">📈 Month Inflow</div><div class="stat-value green" id="dash-month-in">₹0</div><div class="stat-sub" id="dash-month-in-sub">Sales + Repayments</div></div>
+      <div class="stat-card"><div class="stat-label">📈 Month Inflow</div><div class="stat-value green" id="dash-month-in">₹0</div><div class="stat-sub">Sales + Repayments</div></div>
       <div class="stat-card"><div class="stat-label">📉 Month Outflow</div><div class="stat-value red" id="dash-month-out">₹0</div><div class="stat-sub">Vendor + Loans given</div></div>
     </div>
     <div class="stat-grid">
-      <div class="stat-card"><div class="stat-label">🟡 Vendor Payable</div><div class="stat-value red" id="dash-vendor-payable">₹0</div><div class="stat-sub" id="dash-vendor-payable-sub">Outstanding</div></div>
-      <div class="stat-card"><div class="stat-label">🔵 Gold w/ Customers</div><div class="stat-value" id="dash-gold-cust">0g</div><div class="stat-sub">Active loan packets</div></div>
+      <div class="stat-card clickable" onclick="showSubScreen('vendor-ledger')"><div class="stat-label">🟡 Vendor Payable</div><div class="stat-value red" id="dash-vendor-payable">₹0</div><div class="stat-sub" id="dash-vendor-payable-sub">Outstanding</div></div>
+      <div class="stat-card clickable" onclick="showDailyReconciliation()"><div class="stat-label">📋 Daily Recon</div><div class="stat-value" id="dash-recon-status" style="font-size:14px;">Tap to check</div><div class="stat-sub">Verify position</div></div>
     </div>
     <div class="section-title" style="margin-top:4px;">Quick Actions</div>
     <div class="action-grid">
@@ -279,7 +307,10 @@ input[type="date"]{color:var(--text);}
       <div class="action-btn blue-btn" onclick="openForm('sahukar')"><div class="btn-icon">🏦</div><div class="btn-label">Sahukar</div><div class="btn-sub">Borrow money</div></div>
       <div class="action-btn green-btn" onclick="openForm('vendor-purchase')"><div class="btn-icon">📦</div><div class="btn-label">Buy Stock</div><div class="btn-sub">From vendor</div></div>
     </div>
-    <button onclick="showDailyClosing()" style="width:100%;padding:14px;background:var(--deep);color:var(--gold-light);border:none;border-radius:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;margin-bottom:16px;">📋 Daily Closing Summary</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+      <button onclick="showDailyClosing()" style="padding:14px;background:var(--deep);color:var(--gold-light);border:none;border-radius:14px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">📋 Daily Closing</button>
+      <button onclick="showDailyReconciliation()" style="padding:14px;background:linear-gradient(135deg,#1A3A6A,#1A4F8A);color:#fff;border:none;border-radius:14px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">⚖️ Reconcile</button>
+    </div>
   </div>
 </div>
 
@@ -329,6 +360,7 @@ input[type="date"]{color:var(--text);}
       <div class="action-btn" onclick="showSubScreen('search')"><div class="btn-icon">🔍</div><div class="btn-label">Search Customer</div></div>
       <div class="action-btn" onclick="showSubScreen('reports')"><div class="btn-icon">📊</div><div class="btn-label">Reports & Export</div></div>
       <div class="action-btn orange-btn" onclick="showSubScreen('vendors')"><div class="btn-icon">🏪</div><div class="btn-label">Vendors</div><div class="btn-sub">Manage vendors</div></div>
+      <div class="action-btn red-btn" onclick="showSubScreen('vendor-ledger')"><div class="btn-icon">🧾</div><div class="btn-label">Vendor Ledger</div><div class="btn-sub">Payables</div></div>
       <div class="action-btn green-btn" onclick="showSubScreen('inventory')"><div class="btn-icon">📦</div><div class="btn-label">Inventory</div><div class="btn-sub">Stock & purchases</div></div>
       <div class="action-btn red-btn" onclick="signOut()"><div class="btn-icon">🚪</div><div class="btn-label">Sign Out</div></div>
     </div>
@@ -353,7 +385,7 @@ input[type="date"]{color:var(--text);}
 // ═══════════════════════════════════════════
 const CLIENT_ID='808956970350-iktsd5h3l3rh4qpn1n4hebti5co60kqn.apps.googleusercontent.com';
 const SCOPES='https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
-const SHEET_TABS=['Sales','Loans','Buys','Udhars','Sahukars','Customers','SahukarMaster','Payments','Vendors','VendorPurchases','VendorPayables'];
+const SHEET_TABS=['Sales','Loans','Buys','Udhars','Sahukars','Customers','SahukarMaster','Payments','Vendors','VendorPurchases','VendorPayables','PacketMovements'];
 const SHEET_HEADERS={
   Sales:    ['id','date','customerId','customerName','fatherName','village','mobile','item','metal','weight','amount','cashAmount','upiAmount','bankAmount','udharAmount','notes','createdAt'],
   Loans:    ['id','date','customerId','customerName','fatherName','village','mobile','item','metal','weight','amount','roi','packetNo','status','packetStatus','amountPaid','notes','createdAt'],
@@ -365,7 +397,8 @@ const SHEET_HEADERS={
   Payments: ['id','refId','refType','amount','date','notes','createdAt'],
   Vendors:  ['id','name','mobile','city','notes','createdAt'],
   VendorPurchases:['id','date','vendorId','vendorName','metal','weight','ratePerGram','totalAmount','cashPaid','upiPaid','bankPaid','udharBalance','notes','createdAt'],
-  VendorPayables: ['id','vendorId','vendorName','purchaseId','amount','amountPaid','status','date','notes','createdAt']
+  VendorPayables: ['id','vendorId','vendorName','purchaseId','amount','amountPaid','status','date','notes','createdAt'],
+  PacketMovements:['movementId','packetId','fromLocation','toLocation','movementDate','referenceType','referenceId','notes','createdAt']
 };
 
 // ═══════════════════════════════════════════
@@ -391,6 +424,146 @@ const DB={
   },
   nextId:p=>{const i=DB.get(p),max=Math.max(0,...i.map(x=>parseInt((x.id||'0').replace(/\D/g,''))||0));return p.toUpperCase()[0]+String(max+1).padStart(3,'0');},
   nextPacket:()=>{const a=[...DB.get('loans').map(l=>l.packetNo),...DB.get('sahukars').map(s=>s.linkedPackets||'').join(',').split(',').filter(Boolean)];const max=Math.max(0,...a.map(p=>parseInt((p||'0').replace(/\D/g,''))||0));return'P'+String(max+1).padStart(3,'0');}
+};
+
+// ═══════════════════════════════════════════
+// PACKET MOVEMENT LEDGER ENGINE
+// Locations: 'Customer' | 'Shop' | 'Sahukar'
+// packetStatus on loans is kept in sync as a cache
+// Source of truth: PacketMovements table
+// ═══════════════════════════════════════════
+const PM = {
+  // Create a movement entry
+  record(packetId, fromLocation, toLocation, referenceType, referenceId, notes=''){
+    // Safety check: current location must match fromLocation
+    const current = PM.location(packetId);
+    if(current && current !== fromLocation){
+      console.warn(`PM.record blocked: ${packetId} is at ${current}, not ${fromLocation}`);
+      return false;
+    }
+    const mv = {
+      movementId: 'MV'+ Date.now() + Math.random().toString(36).slice(2,5),
+      packetId,
+      fromLocation,
+      toLocation,
+      movementDate: today(),
+      referenceType,   // 'loan' | 'sahukar' | 'close'
+      referenceId,
+      notes,
+      createdAt: Date.now()
+    };
+    const movements = DB.get('packetmovements');
+    movements.push(mv);
+    DB.set('packetmovements', movements);
+    // Keep packetStatus on loan in sync (cache)
+    PM._syncLoanStatus(packetId, toLocation);
+    // Async sync to sheet
+    syncRecord('PacketMovements', mv);
+    return true;
+  },
+
+  // Get current location from latest movement entry
+  // Falls back to loan.packetStatus for backward compatibility
+  location(packetId){
+    const movements = DB.get('packetmovements')
+      .filter(m => m.packetId === packetId)
+      .sort((a,b) => b.createdAt - a.createdAt);
+    if(movements.length > 0) return movements[0].toLocation;
+    // Fallback: read from loan record (old data before ledger)
+    const loan = DB.get('loans').find(l => l.packetNo === packetId);
+    if(!loan) return null;
+    if(loan.packetStatus === 'With Sahukar') return 'Sahukar';
+    if(loan.packetStatus === 'Returned to Customer') return 'Customer';
+    return 'Shop'; // 'In Shop' or default
+  },
+
+  // Get all movements for a packet (history)
+  history(packetId){
+    return DB.get('packetmovements')
+      .filter(m => m.packetId === packetId)
+      .sort((a,b) => a.createdAt - b.createdAt);
+  },
+
+  // Get all packets currently at a location
+  atLocation(location){
+    const loans = DB.getActive('loans');
+    return loans.filter(l => PM.location(l.packetNo) === location);
+  },
+
+  // Get packets at location for a specific metal
+  atLocationByMetal(location, metal){
+    return PM.atLocation(location).filter(l => l.metal === metal);
+  },
+
+  // Keep loan.packetStatus in sync with movement ledger (cache)
+  _syncLoanStatus(packetId, toLocation){
+    const loans = DB.get('loans');
+    const loan = loans.find(l => l.packetNo === packetId);
+    if(!loan) return;
+    if(toLocation === 'Shop') loan.packetStatus = 'In Shop';
+    else if(toLocation === 'Sahukar') loan.packetStatus = 'With Sahukar';
+    else if(toLocation === 'Customer') loan.packetStatus = 'Returned to Customer';
+    DB.set('loans', loans);
+  },
+
+  // Data migration: convert existing packetStatus → movement entries
+  // Safe to run multiple times (idempotent)
+  migrate(){
+    const loans = DB.get('loans');
+    const movements = DB.get('packetmovements');
+    const migratedPackets = new Set(movements.map(m => m.packetId));
+    let count = 0;
+    loans.forEach(loan => {
+      if(!loan.packetNo) return;
+      if(migratedPackets.has(loan.packetNo)) return; // already migrated
+      // Create initial movement: Customer → Shop (loan created)
+      const mv1 = {
+        movementId:'MV_MIG_'+loan.packetNo+'_1',
+        packetId: loan.packetNo,
+        fromLocation: 'Customer',
+        toLocation: 'Shop',
+        movementDate: loan.date || today(),
+        referenceType: 'loan',
+        referenceId: loan.id,
+        notes: 'Migrated from existing data',
+        createdAt: (loan.createdAt||Date.now()) + 1
+      };
+      movements.push(mv1);
+      // If currently With Sahukar, add second movement
+      if(loan.packetStatus === 'With Sahukar'){
+        const mv2 = {
+          movementId:'MV_MIG_'+loan.packetNo+'_2',
+          packetId: loan.packetNo,
+          fromLocation: 'Shop',
+          toLocation: 'Sahukar',
+          movementDate: loan.date || today(),
+          referenceType: 'sahukar_migrate',
+          referenceId: loan.id,
+          notes: 'Migrated: was With Sahukar',
+          createdAt: (loan.createdAt||Date.now()) + 2
+        };
+        movements.push(mv2);
+      }
+      // If returned to customer, add movement
+      if(loan.packetStatus === 'Returned to Customer'){
+        const mv2 = {
+          movementId:'MV_MIG_'+loan.packetNo+'_2',
+          packetId: loan.packetNo,
+          fromLocation: 'Shop',
+          toLocation: 'Customer',
+          movementDate: loan.date || today(),
+          referenceType: 'close_migrate',
+          referenceId: loan.id,
+          notes: 'Migrated: loan was closed',
+          createdAt: (loan.createdAt||Date.now()) + 2
+        };
+        movements.push(mv2);
+      }
+      count++;
+    });
+    DB.set('packetmovements', movements);
+    return count;
+  }
 };
 
 // ═══════════════════════════════════════════
@@ -933,7 +1106,7 @@ function openForm(type){
       <button class="cancel-btn" onclick="closeModal()">Cancel</button>`;
   }
   else if(type==='sahukar'){
-    const inShopLoans=DB.getActive('loans').filter(l=>l.status==='Running'&&l.packetStatus==='In Shop');
+    const inShopLoans=DB.getActive('loans').filter(l=>l.status==='Running'&&PM.location(l.packetNo)==='Shop');
     html=`<div class="form-title">🏦 Sahukar Borrowing</div>
       <div class="field"><label>Date *</label><input type="date" id="f-date" value="${t}"></div>
       <div class="field"><label>Sahukar *</label>
@@ -1051,7 +1224,11 @@ function updateSaleBalance(){
 }
 function saveSale(){
   const name=gv('f-name'),amount=gf('f-amount');
-  if(!name||!amount){showToast('⚠️ Name and Amount required');return;}
+  const father=gv('f-father'),village=gv('f-village'),mobile=gv('f-mobile');
+  if(!name||!amount){showToast('⚠️ Customer Name and Amount required');return;}
+  if(!father){showToast('⚠️ Father Name is required');return;}
+  if(!village){showToast('⚠️ Village is required (needed to identify customer)');return;}
+  if(!mobile||mobile.length<10){showToast('⚠️ Valid 10-digit Mobile number required');return;}
   if(amount<=0){showToast('⚠️ Amount must be greater than 0');return;}
   // Inventory safety check
   const saleWeight=gf('f-weight');
@@ -1108,12 +1285,18 @@ function isPacketDuplicate(pkt){
 }
 function saveLoan(){
   const name=gv('f-name'),amount=gf('f-amount'),pkt=gv('f-packet');
+  const father=gv('f-father'),village=gv('f-village'),mobile=gv('f-mobile');
   if(!name||!amount||!pkt){showToast('⚠️ Name, Amount and Packet No. required');return;}
+  if(!father){showToast('⚠️ Father Name is required');return;}
+  if(!village){showToast('⚠️ Village is required (needed to identify customer)');return;}
+  if(!mobile||mobile.length<10){showToast('⚠️ Valid 10-digit Mobile number required');return;}
   if(amount<=0){showToast('⚠️ Loan amount must be greater than 0');return;}
   if(isPacketDuplicate(pkt)){showToast('⚠️ Packet '+pkt+' already active! Use a different number.');return;}
   const cid=saveCustomerIfNew(name,gv('f-father'),gv('f-mobile'),gv('f-village'));
   const l={id:DB.nextId('loans'),date:gv('f-date'),customerId:cid,customerName:name,fatherName:gv('f-father'),village:gv('f-village'),mobile:gv('f-mobile'),item:gv('f-item'),metal:document.getElementById('f-metal').value,weight:gf('f-weight'),amount,amountPaid:0,roi:gf('f-roi')||2,packetNo:pkt,status:'Running',packetStatus:'In Shop',notes:gv('f-notes'),createdAt:Date.now()};
   const loans=DB.get('loans');loans.push(l);DB.set('loans',loans);
+  // Record packet movement: Customer → Shop (loan created)
+  PM.record(pkt, 'Customer', 'Shop', 'loan', l.id, 'Loan created for '+name);
   closeModal();showToast('✅ Loan saved! Packet: '+pkt);renderDashboard();if(currentScreen==='loans')renderLoans();syncRecord('Loans',l);
 }
 function saveSahukar(){
@@ -1121,16 +1304,24 @@ function saveSahukar(){
   if(!name||!amount){showToast('⚠️ Please select sahukar and enter amount');return;}
   const sel=document.getElementById('f-packet');
   const linked=Array.from(sel.selectedOptions).map(o=>o.value);
-  // Validate all selected packets are still In Shop
+  // Validate using PM ledger — packet must be at 'Shop'
   const loans=DB.get('loans');
   const invalidPkts=linked.filter(pkt=>{
     const loan=loans.find(l=>l.packetNo===pkt);
-    return !loan||loan.packetStatus!=='In Shop'||loan.status!=='Running';
+    if(!loan||loan.status!=='Running') return true;
+    const loc=PM.location(pkt);
+    return loc !== 'Shop';
   });
   if(invalidPkts.length){showToast('⚠️ Packets already pledged or not available: '+invalidPkts.join(', '));return;}
   const e={id:DB.nextId('sahukars'),date:gv('f-date'),sahukarId,sahukarName:name,goldWeight:gf('f-weight'),amount,roi:gf('f-roi')||1.5,linkedPackets:linked.join(','),status:'Running',notes:gv('f-notes'),createdAt:Date.now()};
   const sahukars=DB.get('sahukars');sahukars.push(e);DB.set('sahukars',sahukars);
-  if(linked.length){loans.forEach(l=>{if(linked.includes(l.packetNo))l.packetStatus='With Sahukar';});DB.set('loans',loans);}
+  // Record packet movements: Shop → Sahukar (with safety check built into PM.record)
+  if(linked.length){
+    linked.forEach(pktNo=>{
+      PM.record(pktNo, 'Shop', 'Sahukar', 'sahukar', e.id, 'Pledged to '+name);
+    });
+    // PM._syncLoanStatus already called inside PM.record — no manual mutation needed
+  }
   closeModal();showToast('✅ Sahukar entry saved!');renderDashboard();syncRecord('Sahukars',e);
 }
 function saveSahukarMaster(){
@@ -1230,7 +1421,10 @@ function savePartialPayment(type,id){
   const totalPayable=type==='loans'?total+interest:total;
   if(item.amountPaid>=totalPayable){
     item.status='Closed';
-    if(type==='loans')item.packetStatus='Returned to Customer';
+    if(type==='loans'){
+      // Record movement: Shop → Customer (fully paid via partial payment)
+      PM.record(item.packetNo, 'Shop', 'Customer', 'loan_close_payment', item.id, 'Fully paid – packet returned');
+    }
     showToast('✅ Fully paid! Closed.');
   } else {
     showToast(`✅ Payment of ${fmt(payAmt)} recorded`);
@@ -1243,6 +1437,78 @@ function savePartialPayment(type,id){
   if(currentScreen==='loans')renderLoans();
   updateSheetTab(type==='loans'?'Loans':'Udhars').catch(()=>{});
   syncRecord('Payments',pmt);
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD DRILL-DOWN
+// ═══════════════════════════════════════════
+function dashDrill(type){
+  const td=today(),tm=td.slice(0,7);
+  const loans=DB.getActive('loans');
+  const udhars=DB.getActive('udhars');
+  const sales=DB.getActive('sales');
+
+  if(type==='today-sales'){
+    const ts=sales.filter(s=>s.date===td);
+    openModal(`<div class="form-title">🧾 Today's Sales</div>
+      ${ts.length?ts.map(r=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.customerName)}</div><div class="list-item-sub">${esc(r.item||'—')} &bull; ${r.metal} ${r.weight}g</div><div class="list-item-detail">${r.mobile?'📞'+esc(r.mobile):''} ${r.village?'📍'+esc(r.village):''}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div><span class="list-item-badge ${r.payMode==='Udhar'?'badge-red':'badge-green'}">${r.payMode}</span></div></div>`).join(''):'<div class="empty-state"><div class="empty-icon">🧾</div><p>No sales today yet.</p></div>'}
+      <button class="cancel-btn" onclick="closeModal()">Close</button>`);
+  } else if(type==='month-sales'){
+    const ms=sales.filter(s=>s.date.startsWith(tm)).sort((a,b)=>b.date.localeCompare(a.date));
+    const goldSales=ms.filter(s=>s.metal==='Gold');
+    const silverSales=ms.filter(s=>s.metal==='Silver');
+    openModal(`<div class="form-title">📅 Monthly Sales</div>
+      <div class="stat-grid" style="margin-bottom:14px;">
+        <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value">${fmt(ms.reduce((a,s)=>a+(+s.amount||0),0))}</div><div class="stat-sub">${ms.length} sales</div></div>
+        <div class="stat-card"><div class="stat-label">🥇 Gold</div><div class="stat-value">${goldSales.reduce((a,s)=>a+(+s.weight||0),0).toFixed(2)}g</div><div class="stat-sub">${fmt(goldSales.reduce((a,s)=>a+(+s.amount||0),0))}</div></div>
+        <div class="stat-card"><div class="stat-label">🥈 Silver</div><div class="stat-value">${silverSales.reduce((a,s)=>a+(+s.weight||0),0).toFixed(2)}g</div><div class="stat-sub">${fmt(silverSales.reduce((a,s)=>a+(+s.amount||0),0))}</div></div>
+        <div class="stat-card"><div class="stat-label">Cash</div><div class="stat-value green">${fmt(ms.reduce((a,s)=>a+(+s.cashAmount||(s.payMode==='Cash'?+s.amount:0)||0),0))}</div></div>
+      </div>
+      ${ms.map(r=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.customerName)}</div><div class="list-item-sub">${esc(r.item||'—')} &bull; ${r.metal} ${r.weight}g &bull; ${fmtDate(r.date)}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div><span class="list-item-badge ${r.payMode==='Udhar'?'badge-red':'badge-green'}">${r.payMode}</span></div></div>`).join('')||'<p style="color:var(--muted);text-align:center;padding:20px;">No sales this month</p>'}
+      <button class="cancel-btn" onclick="closeModal()">Close</button>`);
+  } else if(type==='udhar'){
+    showSubScreen('udhar');
+  } else if(type==='loans'){
+    closeModal();showScreen('loans',document.querySelectorAll('.nav-btn')[2]);
+  } else if(type==='sahukar'){
+    showSubScreen('sahukar');
+  } else if(type==='gold-shop'){
+    const pkts=PM.atLocationByMetal('Shop','Gold').filter(l=>l.status==='Running');
+    openModal(`<div class="form-title">🥇 Gold Packets In Shop (${pkts.length})</div>
+      ${pkts.map(l=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name"><span class="packet-id">${l.packetNo}</span> ${esc(l.customerName)}</div><div class="list-item-sub">${l.weight}g &bull; ${esc(l.item||'—')}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(l.amount)}</div></div></div>`).join('')||'<p style="color:var(--muted);text-align:center;padding:20px;">None</p>'}
+      <button class="cancel-btn" onclick="closeModal()">Close</button>`);
+  } else if(type==='gold-sahukar'){
+    const pkts=PM.atLocationByMetal('Sahukar','Gold').filter(l=>l.status==='Running');
+    openModal(`<div class="form-title">🥇 Gold With Sahukar (${pkts.length})</div>
+      ${pkts.map(l=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name"><span class="packet-id">${l.packetNo}</span> ${esc(l.customerName)}</div><div class="list-item-sub">${l.weight}g &bull; ${esc(l.item||'—')}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(l.amount)}</div></div></div>`).join('')||'<p style="color:var(--muted);text-align:center;padding:20px;">None</p>'}
+      <button class="cancel-btn" onclick="closeModal()">Close</button>`);
+  } else if(type==='gold-customers'){
+    const pkts=loans.filter(l=>l.status==='Running'&&l.metal==='Gold');
+    openModal(`<div class="form-title">🥇 Gold With Customers (${pkts.length})</div>
+      ${pkts.map(l=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name"><span class="packet-id">${l.packetNo}</span> ${esc(l.customerName)}</div><div class="list-item-sub">${l.weight}g &bull; ${l.packetStatus}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(l.amount)}</div><span class="list-item-badge ${l.packetStatus==='In Shop'?'badge-gold':'badge-red'}">${l.packetStatus}</span></div></div>`).join('')||'<p style="color:var(--muted);text-align:center;padding:20px;">None</p>'}
+      <button class="cancel-btn" onclick="closeModal()">Close</button>`);
+  } else if(type==='silver-shop'){
+    const pkts=PM.atLocationByMetal('Shop','Silver').filter(l=>l.status==='Running');
+    openModal(`<div class="form-title">🥈 Silver Packets In Shop (${pkts.length})</div>
+      ${pkts.map(l=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name"><span class="packet-id">${l.packetNo}</span> ${esc(l.customerName)}</div><div class="list-item-sub">${l.weight}g &bull; ${esc(l.item||'—')}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(l.amount)}</div></div></div>`).join('')||'<p style="color:var(--muted);text-align:center;padding:20px;">None</p>'}
+      <button class="cancel-btn" onclick="closeModal()">Close</button>`);
+  } else if(type==='silver-sahukar'){
+    const pkts=PM.atLocationByMetal('Sahukar','Silver').filter(l=>l.status==='Running');
+    openModal(`<div class="form-title">🥈 Silver With Sahukar (${pkts.length})</div>
+      ${pkts.map(l=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name"><span class="packet-id">${l.packetNo}</span> ${esc(l.customerName)}</div><div class="list-item-sub">${l.weight}g &bull; ${esc(l.item||'—')}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(l.amount)}</div></div></div>`).join('')||'<p style="color:var(--muted);text-align:center;padding:20px;">None</p>'}
+      <button class="cancel-btn" onclick="closeModal()">Close</button>`);
+  } else if(type==='silver-customers'){
+    const pkts=loans.filter(l=>l.status==='Running'&&l.metal==='Silver');
+    openModal(`<div class="form-title">🥈 Silver With Customers (${pkts.length})</div>
+      ${pkts.map(l=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name"><span class="packet-id">${l.packetNo}</span> ${esc(l.customerName)}</div><div class="list-item-sub">${l.weight}g &bull; ${l.packetStatus}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(l.amount)}</div></div></div>`).join('')||'<p style="color:var(--muted);text-align:center;padding:20px;">None</p>'}
+      <button class="cancel-btn" onclick="closeModal()">Close</button>`);
+  } else if(type==='overdue-loans'){
+    const td2=today();
+    const overdue=loans.filter(l=>l.status==='Running'&&daysB(l.date,td2)>90);
+    openModal(`<div class="form-title">🚨 Overdue Loans (${overdue.length})</div>
+      ${overdue.sort((a,b)=>daysB(b.date,td2)-daysB(a.date,td2)).map(l=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(l.customerName)}</div><div class="list-item-sub"><span class="packet-id">${l.packetNo}</span> &bull; ${l.metal} ${l.weight}g</div><div class="list-item-detail">📞${l.mobile||'—'} 📍${l.village||'—'}</div><div class="list-item-detail">${daysB(l.date,td2)} days &bull; Int: ${fmt(calcInt(+l.amount,+l.roi,l.date))}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(+l.amount-(+l.amountPaid||0))}</div></div></div>`).join('')||'<p style="color:var(--green);text-align:center;padding:20px;">No overdue loans ✅</p>'}
+      <button class="cancel-btn" onclick="closeModal()">Close</button>`);
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -1272,8 +1538,19 @@ function renderDashboard(){
   const intEarned=rL.reduce((a,l)=>a+calcInt(+l.amount,+l.roi,l.date),0);
   const intEl=document.getElementById('dash-interest');
   if(intEl)intEl.textContent=fmt(intEarned);
-  document.getElementById('dash-gold-shop').textContent=rL.filter(l=>l.packetStatus==='In Shop'&&l.metal==='Gold').reduce((a,l)=>a+(+l.weight||0),0).toFixed(2)+'g';
-  document.getElementById('dash-gold-sahukar').textContent=rS.reduce((a,s)=>a+(+s.goldWeight||0),0).toFixed(2)+'g';
+  // Metal position — derived from PM ledger (source of truth)
+  const goldInShop   =PM.atLocationByMetal('Shop','Gold').filter(l=>l.status==='Running').reduce((a,l)=>a+(+l.weight||0),0);
+  const goldWithSah  =PM.atLocationByMetal('Sahukar','Gold').filter(l=>l.status==='Running').reduce((a,l)=>a+(+l.weight||0),0);
+  const goldWithCust =PM.atLocationByMetal('Customer','Gold').filter(l=>l.status==='Running').reduce((a,l)=>a+(+l.weight||0),0);
+  const silverInShop =PM.atLocationByMetal('Shop','Silver').filter(l=>l.status==='Running').reduce((a,l)=>a+(+l.weight||0),0);
+  const silverWithSah=PM.atLocationByMetal('Sahukar','Silver').filter(l=>l.status==='Running').reduce((a,l)=>a+(+l.weight||0),0);
+  const silverWithCust=PM.atLocationByMetal('Customer','Silver').filter(l=>l.status==='Running').reduce((a,l)=>a+(+l.weight||0),0);
+  document.getElementById('dash-gold-shop').textContent=goldInShop.toFixed(2)+'g';
+  document.getElementById('dash-gold-sahukar').textContent=goldWithSah.toFixed(2)+'g';
+  const gCustEl=document.getElementById('dash-gold-cust'); if(gCustEl)gCustEl.textContent=goldWithCust.toFixed(2)+'g';
+  const svShopEl=document.getElementById('dash-silver-shop'); if(svShopEl)svShopEl.textContent=silverInShop.toFixed(2)+'g';
+  const svSahEl=document.getElementById('dash-silver-sahukar'); if(svSahEl)svSahEl.textContent=silverWithSah.toFixed(2)+'g';
+  const svCustEl=document.getElementById('dash-silver-cust'); if(svCustEl)svCustEl.textContent=silverWithCust.toFixed(2)+'g';
   // Stock calculation
   const vps=DB.get('vendorpurchases');
   const goldIn=vps.filter(v=>v.metal==='Gold').reduce((a,v)=>a+(+v.weight||0),0);
@@ -1331,9 +1608,134 @@ function renderDashboard(){
   if(vpEl)vpEl.textContent=fmt(vpBal);
   if(vpSubEl)vpSubEl.textContent=vendorPayables.length+' vendors';
 
-  // Gold with customers (active loan weight)
-  const goldCustEl=document.getElementById('dash-gold-cust');
-  if(goldCustEl)goldCustEl.textContent=rL.filter(l=>l.metal==='Gold').reduce((a,l)=>a+(+l.weight||0),0).toFixed(2)+'g';
+
+}
+
+// ═══════════════════════════════════════════
+// DAILY RECONCILIATION
+// ═══════════════════════════════════════════
+function showDailyReconciliation(){
+  const td=today();
+  const loans=DB.getActive('loans');
+  const udhars=DB.getActive('udhars');
+  const sales=DB.getActive('sales');
+  const sahukars=DB.getActive('sahukars');
+  const vps=DB.getActive('vendorpurchases');
+  const payables=DB.getActive('vendorpayables');
+  const payments=DB.get('payments');
+
+  // GOLD POSITION
+  const rL=loans.filter(l=>l.status==='Running');
+  const goldInShop=PM.atLocationByMetal('Shop','Gold').filter(l=>l.status==='Running').reduce((a,l)=>a+(+l.weight||0),0);
+  const goldWithSah=PM.atLocationByMetal('Sahukar','Gold').filter(l=>l.status==='Running').reduce((a,l)=>a+(+l.weight||0),0);
+  const goldWithCust=rL.filter(l=>l.metal==='Gold').reduce((a,l)=>a+(+l.weight||0),0);
+  const silverInShop=PM.atLocationByMetal('Shop','Silver').filter(l=>l.status==='Running').reduce((a,l)=>a+(+l.weight||0),0);
+  const silverWithSah=PM.atLocationByMetal('Sahukar','Silver').filter(l=>l.status==='Running').reduce((a,l)=>a+(+l.weight||0),0);
+  const goldVP=vps.filter(v=>v.metal==='Gold').reduce((a,v)=>a+(+v.weight||0),0);
+  const silverVP=vps.filter(v=>v.metal==='Silver').reduce((a,v)=>a+(+v.weight||0),0);
+  const goldOld=DB.getActive('buys').filter(b=>b.metal==='Gold').reduce((a,b)=>a+(+b.weight||0),0);
+  const silverOld=DB.getActive('buys').filter(b=>b.metal==='Silver').reduce((a,b)=>a+(+b.weight||0),0);
+  const goldSold=sales.filter(s=>s.metal==='Gold').reduce((a,s)=>a+(+s.weight||0),0);
+  const silverSold=sales.filter(s=>s.metal==='Silver').reduce((a,s)=>a+(+s.weight||0),0);
+  const goldStock=Math.max(0,goldVP+goldOld-goldSold);
+  const silverStock=Math.max(0,silverVP+silverOld-silverSold);
+
+  // CASH FLOW TODAY
+  const todaySales=sales.filter(s=>s.date===td);
+  const todayPayments=payments.filter(p=>p.date===td);
+  const cashIn=todaySales.reduce((a,s)=>a+(+s.cashAmount||(s.payMode==='Cash'?+s.amount:0)||0),0)
+    +todayPayments.filter(p=>p.refType==='loans'||p.refType==='udhars').reduce((a,p)=>a+(+p.amount||0),0);
+  const cashOut=vps.filter(v=>v.date===td).reduce((a,v)=>a+(+v.cashPaid||0),0)
+    +loans.filter(l=>l.date===td).reduce((a,l)=>a+(+l.amount||0),0);
+
+  // LOAN STATUS
+  const runLoanBal=rL.reduce((a,l)=>a+(+l.amount||0)-(+l.amountPaid||0),0);
+  const overdue=rL.filter(l=>daysB(l.date,td)>90).length;
+  const loanStatus=overdue===0?'green':overdue<5?'yellow':'red';
+
+  // UDHAR STATUS
+  const pendUdhar=udhars.filter(u=>u.status==='Pending');
+  const udharBal=pendUdhar.reduce((a,u)=>a+(+u.amount||0)-(+u.amountPaid||0),0);
+  const udharStatus=udharBal===0?'green':udharBal<50000?'yellow':'red';
+
+  // VENDOR PAYABLES
+  const vendorBal=payables.filter(p=>p.status==='Pending').reduce((a,p)=>a+(+p.amount||0)-(+p.amountPaid||0),0);
+  const vendorStatus=vendorBal===0?'green':vendorBal<100000?'yellow':'red';
+
+  // SAHUKAR EXPOSURE
+  const rS=sahukars.filter(s=>s.status==='Running');
+  const sahukarBal=rS.reduce((a,s)=>a+(+s.amount||0),0);
+  const sahukarInt=rS.reduce((a,s)=>a+calcInt(+s.amount,+s.roi,s.date),0);
+  const sahukarStatus=sahukarBal===0?'green':sahukarBal<500000?'yellow':'red';
+
+  const ind=(status)=>`<span class="indicator ${status}"></span>`;
+  const row=(label,val,status,detail='')=>`<div class="recon-row"><span class="recon-label">${ind(status)}${label}</span><span class="recon-val recon-${status}">${val}${detail?`<div style="font-size:10px;color:var(--muted);font-weight:400;">${detail}</div>`:''}</span></div>`;
+
+  openModal(`<div class="form-title">⚖️ Daily Reconciliation</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">${fmtDate(td)}</div>
+
+    <div class="recon-section">
+      <div style="font-size:12px;font-weight:700;color:var(--gold-dark);margin-bottom:8px;">🥇 GOLD POSITION</div>
+      ${row('In Shop (pledged)',goldInShop.toFixed(2)+'g',goldInShop>0?'green':'yellow')}
+      ${row('With Sahukar',goldWithSah.toFixed(2)+'g',goldWithSah>0?'yellow':'green')}
+      ${row('With Customers',goldWithCust.toFixed(2)+'g',goldWithCust>0?'yellow':'green')}
+      ${row('Stock (vendor)',goldStock.toFixed(2)+'g',goldStock>0?'green':'yellow')}
+    </div>
+
+    <div class="recon-section">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">🥈 SILVER POSITION</div>
+      ${row('In Shop (pledged)',silverInShop.toFixed(2)+'g',silverInShop>0?'green':'yellow')}
+      ${row('With Sahukar',silverWithSah.toFixed(2)+'g',silverWithSah>0?'yellow':'green')}
+      ${row('Stock (vendor)',silverStock.toFixed(2)+'g',silverStock>0?'green':'yellow')}
+    </div>
+
+    <div class="recon-section">
+      <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px;">💵 CASH FLOW TODAY</div>
+      ${row('Cash In',fmt(cashIn),cashIn>0?'green':'yellow')}
+      ${row('Cash Out',fmt(cashOut),cashOut<cashIn?'green':'yellow')}
+      ${row('Net',fmt(cashIn-cashOut),cashIn>=cashOut?'green':'red')}
+    </div>
+
+    <div class="recon-section">
+      <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px;">🔒 LOAN STATUS</div>
+      ${row('Active Loans',rL.length+' packets',rL.length>0?'yellow':'green')}
+      ${row('Outstanding Balance',fmt(runLoanBal),'yellow')}
+      ${row('Overdue (>90 days)',overdue,loanStatus,overdue>0?'Action needed':'')}
+    </div>
+
+    <div class="recon-section">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;">📋 UDHAR STATUS</div>
+      ${row('Pending Customers',pendUdhar.length,udharStatus)}
+      ${row('Total Pending',fmt(udharBal),udharStatus)}
+    </div>
+
+    <div class="recon-section">
+      <div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px;">🟡 VENDOR PAYABLES</div>
+      ${row('Outstanding',fmt(vendorBal),vendorStatus)}
+    </div>
+
+    <div class="recon-section">
+      <div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:8px;">🏦 SAHUKAR EXPOSURE</div>
+      ${row('Borrowed',fmt(sahukarBal),sahukarStatus)}
+      ${row('Interest Accrued',fmt(sahukarInt),sahukarBal>0?'yellow':'green')}
+    </div>
+
+    <button class="submit-btn" style="background:linear-gradient(135deg,#1A3A6A,#1A4F8A);margin-top:4px;" onclick="confirmReconciliation()">✓ Confirm Daily Reconciliation</button>
+    <button class="cancel-btn" onclick="closeModal()">Close</button>`);
+}
+
+function confirmReconciliation(){
+  const td=today();
+  const rec={date:td,confirmedAt:Date.now(),by:'owner'};
+  const history=JSON.parse(localStorage.getItem('sjj_recon_history')||'[]');
+  history.push(rec);
+  if(history.length>90)history.splice(0,history.length-90);
+  localStorage.setItem('sjj_recon_history',JSON.stringify(history));
+  closeModal();
+  showToast('✅ Reconciliation confirmed for '+fmtDate(td));
+  // Update recon card
+  const el=document.getElementById('dash-recon-status');
+  if(el){el.textContent='✅ Done today';el.style.color='var(--green)';}
 }
 
 // ═══════════════════════════════════════════
@@ -1344,7 +1746,7 @@ function showDailyClosing(){
   const sales=DB.getActive('sales').filter(s=>s.date===td);
   const loans=DB.getActive('loans').filter(l=>l.date===td);
   const udhars=DB.getActive('udhars');
-  const buys=DB.get('buys').filter(b=>b.date===td);
+  const buys=DB.getActive('buys').filter(b=>b.date===td);
   const payments=DB.get('payments').filter(p=>p.date===td);
   // Split payment aware totals
   const cashFromSales=sales.reduce((a,s)=>a+(+s.cashAmount||(s.payMode==='Cash'?+s.amount:0)||0),0);
@@ -1438,7 +1840,7 @@ function viewRecord(type, id){
   } else if(type==='loans'){
     title='🔒 Loan Details';
     const interest=r.status==='Running'?calcInt(+r.amount,+r.roi,r.date):0;
-    fields=row('Date',fmtDate(r.date))+row('Customer',r.customerName)+row('S/o',r.fatherName)+row('Village',r.village)+row('Mobile',r.mobile)+row('Item Pledged',r.item)+row('Metal',r.metal)+row('Weight',r.weight+'g')+row('Loan Amount',fmt(r.amount))+row('Interest Rate',r.roi+'%/month')+row('Packet No.',r.packetNo)+row('Status',r.status)+row('Packet Status',r.packetStatus)+row('Amount Paid',fmt(+r.amountPaid||0))+row('Interest Till Today',fmt(interest))+row('Total Due',fmt((+r.amount+interest)-(+r.amountPaid||0)))+row('Notes',r.notes);
+    fields=row('Date',fmtDate(r.date))+row('Customer',r.customerName)+row('S/o',r.fatherName)+row('Village',r.village)+row('Mobile',r.mobile)+row('Item Pledged',r.item)+row('Metal',r.metal)+row('Weight',r.weight+'g')+row('Loan Amount',fmt(r.amount))+row('Interest Rate',r.roi+'%/month')+row('Packet No.',r.packetNo)+row('Status',r.status)+row('Packet Location',PM.location(r.packetNo)||r.packetStatus)+row('Amount Paid',fmt(+r.amountPaid||0))+row('Interest Till Today',fmt(interest))+row('Total Due',fmt((+r.amount+interest)-(+r.amountPaid||0)))+row('Notes',r.notes);
   } else if(type==='buys'){
     title='⚖️ Purchase Details';
     fields=row('Date',fmtDate(r.date))+row('Customer',r.customerName)+row('S/o',r.fatherName)+row('Village',r.village)+row('Mobile',r.mobile)+row('Item',r.item)+row('Metal',r.metal)+row('Weight',r.weight+'g')+row('Amount Paid',fmt(r.amount))+row('Notes',r.notes);
@@ -1537,6 +1939,27 @@ function editRecord(type, id){
       <button class="cancel-btn" onclick="closeModal()">Cancel</button>`;
   }
 
+  else if(type==='vendorpurchases'){
+    html=`<div class="form-title">✏️ Edit Vendor Purchase</div>
+      <div class="field"><label>Date</label><input type="date" id="ed-date" value="${r.date}"></div>
+      <div class="field"><label>Vendor Name</label><input type="text" id="ed-vname" value="${esc(r.vendorName)}"></div>
+      <div class="field"><label>Metal</label>
+        <div class="seg-control">
+          <button class="seg-btn ${r.metal==='Gold'?'active':''}" onclick="setSeg(this,'ed-metal','Gold')">🥇 Gold</button>
+          <button class="seg-btn ${r.metal==='Silver'?'active':''}" onclick="setSeg(this,'ed-metal','Silver')">🥈 Silver</button>
+        </div>
+        <input type="hidden" id="ed-metal" value="${r.metal||'Gold'}">
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Weight (g)</label><input type="number" id="ed-weight" value="${r.weight}" step="0.01"></div>
+        <div class="field"><label>Rate/g (₹)</label><input type="number" id="ed-rate" value="${r.ratePerGram}"></div>
+      </div>
+      <div class="field"><label>Total Amount (₹)</label><input type="number" id="ed-amount" value="${r.totalAmount}"></div>
+      <div class="field"><label>Notes</label><textarea id="ed-notes">${esc(r.notes||'')}</textarea></div>
+      <button class="submit-btn" onclick="saveEdit('vendorpurchases','${id}')">✓ Save Changes</button>
+      <button class="cancel-btn" onclick="closeModal()">Cancel</button>`;
+  }
+
   openModal(html);
 }
 
@@ -1576,6 +1999,15 @@ function saveEdit(type, id){
     }
   }
 
+  // Vendor purchase specific fields
+  if(type==='vendorpurchases'){
+    r.vendorName = gv('ed-vname') || r.vendorName;
+    r.metal = document.getElementById('ed-metal')?.value || r.metal;
+    r.weight = gf('ed-weight') || r.weight;
+    r.ratePerGram = gf('ed-rate') || r.ratePerGram;
+    r.totalAmount = gf('ed-amount') || r.totalAmount;
+  }
+
   DB.set(type, items);
   // Log the edit with before/after comparison
   logEdit(type, id, previousValues, r);
@@ -1585,7 +2017,7 @@ function saveEdit(type, id){
   if(currentScreen==='sales') renderSales();
   if(currentScreen==='loans') renderLoans();
   // Sync to sheets
-  const tabMap={sales:'Sales',loans:'Loans',buys:'Buys'};
+  const tabMap={sales:'Sales',loans:'Loans',buys:'Buys',vendorpurchases:'VendorPurchases'};
   if(tabMap[type]) updateSheetTab(tabMap[type]).catch(()=>{});
 }
 
@@ -1656,14 +2088,14 @@ function renderLoans(){
         <div class="list-item-detail">${l.roi}%/mo &bull; Interest: <span style="color:var(--red);">${fmt(interest)}</span></div>
         ${l.status==='Running'?`<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div><div class="balance-row"><span class="balance-paid">Paid: ${fmt(paid)}</span><span class="balance-due">Due: ${fmt(balance)}</span></div>`:''}
         ${l.notes?`<div class="list-item-notes">📝 ${esc(l.notes)}</div>`:''}
-        <span class="list-item-badge ${l.packetStatus==='In Shop'?'badge-gold':l.packetStatus==='With Sahukar'?'badge-red':'badge-green'}">${l.packetStatus}</span>
+        <span class="list-item-badge ${(()=>{const _loc=PM.location(l.packetNo);return _loc==='Shop'?'badge-gold':_loc==='Sahukar'?'badge-red':'badge-green'})()}">${(()=>{const _l=PM.location(l.packetNo);return _l||l.packetStatus})()}</span>
       </div>
       <div class="list-item-right">
         <div class="list-item-amount">${fmt(l.amount)}</div>
         <span class="list-item-badge ${l.status==='Running'?'badge-red':'badge-green'}">${l.status}</span>
         <br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;margin-top:4px;" onclick="viewRecord('loans','${l.id}')">👁️ View</button>
         ${l.status==='Running'?`<br><button class="part-pay-btn" onclick="openPartialPayment('loans','${l.id}')">💰 Pay</button><br><button class="close-loan-btn" onclick="closeLoan('${l.id}')">Close</button>`:''}
-        <br><button class="pay-btn" style="background:var(--gold-dark);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="editRecord('loans','${l.id}')">✏️ Edit</button><br><button class="pay-btn" style="background:var(--muted);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="showEditHistory('loans','${l.id}')">📋 Log</button>
+        <br><button class="pay-btn" style="background:var(--gold-dark);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="editRecord('loans','${l.id}')">✏️ Edit</button><br><button class="pay-btn" style="background:var(--muted);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="showEditHistory('loans','${l.id}')">📋 Log</button><br><button class="delete-btn" style="margin-top:4px;" onclick="deleteLoan('${l.id}')">Delete</button>
       </div>
     </div>`;
   }).join('');
@@ -1678,10 +2110,30 @@ function closeLoan(id){
     ?'Close this loan?\n\nBalance still due: ₹'+Math.round(due).toLocaleString('en-IN')+'\n\nPacket will be marked as Returned to Customer.'
     :'Close this fully paid loan?\nPacket will be marked as Returned to Customer.';
   if(!confirm(msg))return;
-  l.status='Closed';l.packetStatus='Returned to Customer';
+  l.status='Closed';
+  // Record movement: Shop → Customer (loan closed, packet returned)
+  // PM.record handles the packetStatus sync automatically
+  PM.record(l.packetNo, 'Shop', 'Customer', 'loan_close', l.id, 'Loan closed – packet returned to '+l.customerName);
   DB.set('loans',loans);renderLoans();renderDashboard();
-  showToast('✅ Loan closed – Packet returned');
+  showToast('✅ Loan closed – Packet returned to customer');
   updateSheetTab('Loans').catch(()=>{});
+}
+function deleteLoan(id){
+  if(!confirm('Delete this loan? It will be hidden but kept safely in backup.'))return;
+  const loans=DB.get('loans');
+  const l=loans.find(x=>x.id===id);
+  if(l&&PM.location(l.packetNo)==='Sahukar'){showToast('⚠️ Cannot delete — packet is With Sahukar. Close sahukar entry first.');return;}
+  DB.softDelete('loans',id);
+  renderLoans();renderDashboard();
+  showToast('🗑️ Loan hidden (kept in backup)');
+  updateSheetTab('Loans').catch(()=>{});
+}
+function deleteBuy(id){
+  if(!confirm('Delete this purchase? It will be hidden but kept in backup.'))return;
+  DB.softDelete('buys',id);
+  renderDashboard();
+  showToast('🗑️ Purchase hidden (kept in backup)');
+  updateSheetTab('Buys').catch(()=>{});
 }
 
 // ═══════════════════════════════════════════
@@ -1694,7 +2146,7 @@ function showSubScreen(type){
     const b=DB.getActive('buys').sort((a,c)=>(c.createdAt||0)-(a.createdAt||0));
     html=`<div class="form-title">⚖️ Old Gold Purchases</div>
       <button class="submit-btn" onclick="closeModal();openForm('buy')" style="margin-bottom:14px;">+ Add New Purchase</button>
-      ${b.length?b.map(r=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.customerName)}</div>${custInfo(r)}<div class="list-item-sub">${esc(r.item)||'—'} &bull; ${r.metal} ${r.weight}g</div><div class="list-item-detail">${fmtDate(r.date)}</div>${r.notes?`<div class="list-item-notes">📝 ${esc(r.notes)}</div>`:''}</div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div><br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;margin-top:4px;" onclick="editRecord('buys','${r.id}')">✏️ Edit</button></div></div>`).join(''):'<div class="empty-state"><div class="empty-icon">⚖️</div><p>No purchases yet.</p></div>'}`;
+      ${b.length?b.map(r=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(r.customerName)}</div>${custInfo(r)}<div class="list-item-sub">${esc(r.item)||'—'} &bull; ${r.metal} ${r.weight}g</div><div class="list-item-detail">${fmtDate(r.date)}</div>${r.notes?`<div class="list-item-notes">📝 ${esc(r.notes)}</div>`:''}</div><div class="list-item-right"><div class="list-item-amount">${fmt(r.amount)}</div><br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;margin-top:4px;" onclick="editRecord('buys','${r.id}')">✏️ Edit</button><br><button class="delete-btn" style="margin-top:4px;" onclick="deleteBuy('${r.id}')">Delete</button></div></div>`).join(''):'<div class="empty-state"><div class="empty-icon">⚖️</div><p>No purchases yet.</p></div>'}`;
   }
 
   else if(type==='udhar'){
@@ -1724,13 +2176,30 @@ function showSubScreen(type){
   }
 
   else if(type==='packets'){
-    const loans=DB.getActive('loans');
-    const gr={a:loans.filter(l=>l.packetStatus==='In Shop'),b:loans.filter(l=>l.packetStatus==='With Sahukar'),c:loans.filter(l=>l.packetStatus==='Returned to Customer')};
-    const pr=arr=>arr.map(l=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name"><span class="packet-id">${l.packetNo}</span> &nbsp;${esc(l.customerName)}</div>${custInfo(l)}<div class="list-item-sub">${esc(l.item)||'—'} &bull; ${l.metal} ${l.weight}g</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(l.amount)}</div></div></div>`).join('');
+    const inShop   =PM.atLocation('Shop');
+    const withSah  =PM.atLocation('Sahukar');
+    const returned =PM.atLocation('Customer'); // location already Customer per PM
+    const pr=(arr,showHistory=true)=>arr.map(l=>`
+      <div class="list-item">
+        <div class="list-item-left">
+          <div class="list-item-name"><span class="packet-id">${l.packetNo}</span> &nbsp;${esc(l.customerName)}</div>
+          ${custInfo(l)}
+          <div class="list-item-sub">${esc(l.item)||'—'} &bull; ${l.metal} ${l.weight}g</div>
+          <div class="list-item-detail">${fmtDate(l.date)} &bull; ${l.roi}%/mo</div>
+        </div>
+        <div class="list-item-right">
+          <div class="list-item-amount">${fmt(l.amount)}</div>
+          ${showHistory?`<button class="pay-btn" style="background:var(--muted);font-size:10px;padding:4px 8px;margin-top:4px;" onclick="showPacketHistory('${l.packetNo}')">📋 History</button>`:''}
+        </div>
+      </div>`).join('');
     html=`<div class="form-title">📦 Packet Tracker</div>
-      <div class="history-header" style="color:var(--green);">IN SHOP (${gr.a.length})</div>${gr.a.length?pr(gr.a):'<div style="color:var(--muted);padding:8px 0;">None</div>'}
-      <div class="history-header" style="color:var(--red);margin-top:12px;">WITH SAHUKAR (${gr.b.length})</div>${gr.b.length?pr(gr.b):'<div style="color:var(--muted);padding:8px 0;">None</div>'}
-      <div class="history-header" style="margin-top:12px;">RETURNED (${gr.c.length})</div>${gr.c.length?pr(gr.c):'<div style="color:var(--muted);padding:8px 0;">None</div>'}`;
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Location derived from movement ledger — tap 📋 History to see full trail</div>
+      <div class="history-header" style="color:var(--green);">🏪 IN SHOP (${inShop.length})</div>
+      ${inShop.length?pr(inShop):'<div style="color:var(--muted);padding:8px 0;">None in shop</div>'}
+      <div class="history-header" style="color:var(--red);margin-top:14px;">🏦 WITH SAHUKAR (${withSah.length})</div>
+      ${withSah.length?pr(withSah):'<div style="color:var(--muted);padding:8px 0;">None with sahukar</div>'}
+      <div class="history-header" style="margin-top:14px;">👤 RETURNED TO CUSTOMER (${returned.length})</div>
+      ${returned.length?pr(returned,false):'<div style="color:var(--muted);padding:8px 0;">None returned</div>'}`;
   }
 
   else if(type==='customers'){
@@ -1776,6 +2245,48 @@ function showSubScreen(type){
       <button class="submit-btn" onclick="closeModal();openForm('vendor-master')" style="margin-bottom:14px;">+ Add New Vendor</button>
       ${vendors.length?vendors.map(v=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(v.name)}</div><div class="list-item-detail">${v.city?'📍'+esc(v.city):''} ${v.mobile?'📞'+esc(v.mobile):''}</div>${v.notes?`<div class="list-item-notes">📝 ${esc(v.notes)}</div>`:''}</div><div class="list-item-right"><button class="delete-btn" onclick="deleteVendor('${v.id}')">Delete</button></div></div>`).join(''):'<div class="empty-state"><div class="empty-icon">🏪</div><p>No vendors yet.<br>Add vendors to record purchases.</p></div>'}`;
   }
+  else if(type==='vendor-ledger'){
+    const vendors=DB.getActive('vendors');
+    const payables=DB.getActive('vendorpayables');
+    const purchases=DB.getActive('vendorpurchases');
+    const payments=DB.get('payments');
+
+    // Group by vendor
+    const vendorMap={};
+    purchases.forEach(vp=>{
+      const vid=vp.vendorId||vp.vendorName;
+      if(!vendorMap[vid])vendorMap[vid]={name:vp.vendorName,id:vp.vendorId,purchases:[],payables:[],payments:[]};
+      vendorMap[vid].purchases.push(vp);
+    });
+    payables.forEach(p=>{
+      const vid=p.vendorId||p.vendorName;
+      if(!vendorMap[vid])vendorMap[vid]={name:p.vendorName,id:p.vendorId,purchases:[],payables:[],payments:[]};
+      vendorMap[vid].payables.push(p);
+    });
+
+    const vendorList=Object.values(vendorMap).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    const totalPayable=payables.filter(p=>p.status==='Pending').reduce((a,p)=>a+(+p.amount||0)-(+p.amountPaid||0),0);
+
+    html=`<div class="form-title">🧾 Vendor Ledger</div>
+      <div class="interest-display" style="margin-bottom:14px;">
+        <div class="int-label">Total Outstanding Payable</div>
+        <div class="int-value">${fmt(totalPayable)} to ${vendorList.filter(v=>v.payables.some(p=>p.status==='Pending')).length} vendors</div>
+      </div>
+      ${vendorList.length?vendorList.map(v=>{
+        const pendingBal=v.payables.filter(p=>p.status==='Pending').reduce((a,p)=>a+(+p.amount||0)-(+p.amountPaid||0),0);
+        const totalPurchased=v.purchases.reduce((a,p)=>a+(+p.totalAmount||0),0);
+        return`<div class="list-item" style="cursor:pointer;" onclick="showVendorLedger('${v.id||''}','${esc(v.name)}')">
+          <div class="list-item-left">
+            <div class="list-item-name">${esc(v.name)} <span style="font-size:10px;color:var(--gold);">›</span></div>
+            <div class="list-item-sub">${v.purchases.length} purchases &bull; ${fmt(totalPurchased)} total</div>
+          </div>
+          <div class="list-item-right">
+            <div class="list-item-amount ${pendingBal>0?'red':''}">${pendingBal>0?fmt(pendingBal)+' due':'Paid ✅'}</div>
+            ${pendingBal>0?`<span class="list-item-badge badge-red">Payable</span>`:`<span class="list-item-badge badge-green">Clear</span>`}
+          </div>
+        </div>`;}).join(''):'<div class="empty-state"><div class="empty-icon">🏪</div><p>No vendor transactions yet.</p></div>'}`;
+  }
+
   else if(type==='inventory'){
     const vps=DB.getActive('vendorpurchases').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
     const goldTotal=vps.filter(v=>v.metal==='Gold').reduce((a,v)=>a+(+v.weight||0),0);
@@ -1791,18 +2302,26 @@ function showSubScreen(type){
     const silverBought=allBuys.filter(b=>b.metal==='Silver').reduce((a,b)=>a+(+b.weight||0),0);
     const goldNet=Math.max(0,goldTotal+goldBought-goldSold);
     const silverNet=Math.max(0,silverTotal+silverBought-silverSold);
+    // Include old gold purchases in inventory view
+    const allBuysForInv=DB.getActive('buys').sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    const oldGoldIn=allBuysForInv.filter(b=>b.metal==='Gold').reduce((a,b)=>a+(+b.weight||0),0);
+    const oldSilverIn=allBuysForInv.filter(b=>b.metal==='Silver').reduce((a,b)=>a+(+b.weight||0),0);
     html=`<div class="form-title">📦 Inventory & Stock</div>
       <button class="submit-btn" onclick="closeModal();openForm('vendor-purchase')" style="margin-bottom:14px;">+ Record Vendor Purchase</button>
       <div class="stat-grid" style="margin-bottom:14px;">
-        <div class="stat-card"><div class="stat-label">🥇 Gold Purchased</div><div class="stat-value">${goldTotal.toFixed(2)}g</div><div class="stat-sub">${fmt(goldAmt)}</div></div>
-        <div class="stat-card"><div class="stat-label">🥈 Silver Purchased</div><div class="stat-value">${silverTotal.toFixed(2)}g</div><div class="stat-sub">${fmt(silverAmt)}</div></div>
-        <div class="stat-card"><div class="stat-label">🥇 Gold Net Stock</div><div class="stat-value green">${goldNet.toFixed(2)}g</div><div class="stat-sub">After sales</div></div>
-        <div class="stat-card"><div class="stat-label">🥈 Silver Net Stock</div><div class="stat-value blue">${silverNet.toFixed(2)}g</div><div class="stat-sub">After sales</div></div>
+        <div class="stat-card"><div class="stat-label">🥇 Gold From Vendors</div><div class="stat-value">${goldTotal.toFixed(2)}g</div><div class="stat-sub">${fmt(goldAmt)}</div></div>
+        <div class="stat-card"><div class="stat-label">🥈 Silver From Vendors</div><div class="stat-value">${silverTotal.toFixed(2)}g</div><div class="stat-sub">${fmt(silverAmt)}</div></div>
+        <div class="stat-card"><div class="stat-label">🥇 Old Gold Bought</div><div class="stat-value">${oldGoldIn.toFixed(2)}g</div><div class="stat-sub">From customers</div></div>
+        <div class="stat-card"><div class="stat-label">🥈 Old Silver Bought</div><div class="stat-value">${oldSilverIn.toFixed(2)}g</div><div class="stat-sub">From customers</div></div>
+        <div class="stat-card"><div class="stat-label">🥇 Gold Net Stock</div><div class="stat-value green">${goldNet.toFixed(2)}g</div><div class="stat-sub">Available for sale</div></div>
+        <div class="stat-card"><div class="stat-label">🥈 Silver Net Stock</div><div class="stat-value blue">${silverNet.toFixed(2)}g</div><div class="stat-sub">Available for sale</div></div>
       </div>
-      <div class="history-header">Purchase History (${vps.length})</div>
+      <div class="history-header" style="margin-top:14px;">Old Gold/Silver Purchases (${allBuysForInv.length})</div>
+      ${allBuysForInv.length?allBuysForInv.map(b=>`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(b.customerName)}</div><div class="list-item-sub">${b.metal} &bull; ${b.weight}g &bull; ${esc(b.item||'—')}</div><div class="list-item-detail">${fmtDate(b.date)}</div></div><div class="list-item-right"><div class="list-item-amount">${fmt(b.amount)}</div><span class="list-item-badge badge-gold">Old Metal</span></div></div>`).join(''):'<div style="color:var(--muted);padding:8px;">None yet</div>'}
+      <div class="history-header" style="margin-top:14px;">Vendor Purchases (${vps.length})</div>
       ${vps.length?vps.map(v=>{
         const payInfo=[v.cashPaid>0?`💵${fmt(v.cashPaid)}`:'',v.upiPaid>0?`📱${fmt(v.upiPaid)}`:'',v.bankPaid>0?`🏦${fmt(v.bankPaid)}`:'',v.udharBalance>0?`📋${fmt(v.udharBalance)} due`:''].filter(Boolean).join(' ');
-        return`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(v.vendorName)}</div><div class="list-item-sub">${v.metal} &bull; ${v.weight}g &bull; ₹${v.ratePerGram}/g</div><div class="list-item-detail">${fmtDate(v.date)} &bull; ${v.id}</div>${payInfo?`<div style="font-size:10px;color:var(--muted);margin-top:2px;">${payInfo}</div>`:''} ${v.udharBalance>0?`<span class="list-item-badge badge-red">₹${v.udharBalance} Payable</span>`:''} ${v.notes?`<div class="list-item-notes">📝 ${esc(v.notes)}</div>`:''}</div><div class="list-item-right"><div class="list-item-amount">${fmt(v.totalAmount)}</div><br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="viewRecord('vendorpurchases','${v.id}')">👁️ View</button><br><button class="delete-btn" onclick="deleteVendorPurchase('${v.id}')">Delete</button></div></div>`;}).join(''):'<div class="empty-state"><div class="empty-icon">📦</div><p>No purchases yet.</p></div>'}`;
+        return`<div class="list-item"><div class="list-item-left"><div class="list-item-name">${esc(v.vendorName)}</div><div class="list-item-sub">${v.metal} &bull; ${v.weight}g &bull; ₹${v.ratePerGram}/g</div><div class="list-item-detail">${fmtDate(v.date)} &bull; ${v.id}</div>${payInfo?`<div style="font-size:10px;color:var(--muted);margin-top:2px;">${payInfo}</div>`:''} ${v.udharBalance>0?`<span class="list-item-badge badge-red">₹${v.udharBalance} Payable</span>`:''} ${v.notes?`<div class="list-item-notes">📝 ${esc(v.notes)}</div>`:''}</div><div class="list-item-right"><div class="list-item-amount">${fmt(v.totalAmount)}</div><br><button class="pay-btn" style="background:var(--blue);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="viewRecord('vendorpurchases','${v.id}')">👁️ View</button><br><button class="pay-btn" style="background:var(--gold-dark);font-size:11px;padding:6px 10px;margin-top:3px;" onclick="editRecord('vendorpurchases','${v.id}')">✏️ Edit</button><br><button class="delete-btn" onclick="deleteVendorPurchase('${v.id}')">Delete</button></div></div>`;}).join(''):'<div class="empty-state"><div class="empty-icon">📦</div><p>No purchases yet.</p></div>'}`;
   }
   else if(type==='search'){
     html=`<div class="form-title">🔍 Search Customer</div>
@@ -1819,6 +2338,65 @@ function showSubScreen(type){
 // ═══════════════════════════════════════════
 // CUSTOMER HISTORY
 // ═══════════════════════════════════════════
+function showCustomerTimeline(name, mobile, custId){
+  // Find by custId first, then by name+mobile for old data
+  const allSales=DB.getActive('sales').filter(r=>
+    r.customerId===custId||((!r.customerId||!custId)&&(r.customerName||'').toLowerCase()===name.toLowerCase()&&(mobile?r.mobile===mobile:true)));
+  const allLoans=DB.getActive('loans').filter(r=>
+    r.customerId===custId||((!r.customerId||!custId)&&(r.customerName||'').toLowerCase()===name.toLowerCase()));
+  const allBuys=DB.getActive('buys').filter(r=>
+    r.customerId===custId||((!r.customerId||!custId)&&(r.customerName||'').toLowerCase()===name.toLowerCase()));
+  const allUdhars=DB.getActive('udhars').filter(r=>
+    r.customerId===custId||((!r.customerId||!custId)&&(r.customerName||'').toLowerCase()===name.toLowerCase()));
+  const payments=DB.get('payments');
+
+  // Build chronological timeline
+  const events=[];
+  allSales.forEach(s=>events.push({date:s.date,ts:s.createdAt||0,type:'sale',icon:'🧾',title:'Sale: '+esc(s.item||'—'),sub:`${s.metal} ${s.weight}g`,amt:s.amount,badge:s.payMode,badgeClass:s.payMode==='Udhar'?'badge-red':s.payMode==='UPI'?'badge-blue':'badge-green',obj:s}));
+  allLoans.forEach(l=>{
+    events.push({date:l.date,ts:l.createdAt||0,type:'loan',icon:'🔒',title:'Loan: '+esc(l.item||'—'),sub:`${l.metal} ${l.weight}g | Pkt: ${l.packetNo} | ${l.roi}%/mo`,amt:l.amount,badge:l.status,badgeClass:l.status==='Running'?'badge-red':'badge-green',obj:l});
+    // Add payment events for this loan
+    payments.filter(p=>p.refId===l.id).forEach(p=>events.push({date:p.date,ts:p.createdAt||0,type:'payment',icon:'💰',title:'Loan Payment',sub:`For pkt ${l.packetNo}`,amt:p.amount,badge:'Payment',badgeClass:'badge-green',obj:p}));
+  });
+  allBuys.forEach(b=>events.push({date:b.date,ts:b.createdAt||0,type:'buy',icon:'⚖️',title:'Old Gold Sold: '+esc(b.item||'—'),sub:`${b.metal} ${b.weight}g`,amt:b.amount,badge:'Purchase',badgeClass:'badge-gold',obj:b}));
+  allUdhars.forEach(u=>{
+    payments.filter(p=>p.refId===u.id).forEach(p=>events.push({date:p.date,ts:p.createdAt||0,type:'udhar-pay',icon:'✅',title:'Udhar Payment',sub:'',amt:p.amount,badge:'Collected',badgeClass:'badge-green',obj:p}));
+  });
+
+  // Sort by date desc
+  events.sort((a,b)=>b.ts-a.ts||(b.date>a.date?1:-1));
+
+  const totalSales=allSales.reduce((a,s)=>a+(+s.amount||0),0);
+  const totalLoans=allLoans.reduce((a,l)=>a+(+l.amount||0),0);
+  const pendUdhar=allUdhars.filter(u=>u.status==='Pending').reduce((a,u)=>a+(+u.amount||0)-(+u.amountPaid||0),0);
+  const runLoans=allLoans.filter(l=>l.status==='Running');
+
+  openModal(`<div class="form-title">👤 ${esc(name)}</div>
+    <div style="background:var(--bg);border-radius:12px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--muted);">
+      ${mobile?`📞 ${esc(mobile)} &nbsp;`:''}
+    </div>
+    <div class="stat-grid" style="margin-bottom:14px;">
+      <div class="stat-card"><div class="stat-label">Total Sales</div><div class="stat-value" style="font-size:15px;">${fmt(totalSales)}</div></div>
+      <div class="stat-card"><div class="stat-label">Active Loans</div><div class="stat-value red" style="font-size:15px;">${runLoans.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Udhar Pending</div><div class="stat-value red" style="font-size:15px;">${fmt(pendUdhar)}</div></div>
+      <div class="stat-card"><div class="stat-label">Old Gold Bought</div><div class="stat-value" style="font-size:15px;">${allBuys.length} items</div></div>
+    </div>
+    <div class="history-header">Transaction Timeline (${events.length})</div>
+    ${events.length?events.map(ev=>`
+      <div class="list-item" style="margin-bottom:8px;">
+        <div class="list-item-left">
+          <div style="font-size:13px;font-weight:700;">${ev.icon} ${ev.title}</div>
+          <div class="list-item-sub">${ev.sub}</div>
+          <div class="list-item-detail">${fmtDate(ev.date)}</div>
+          <span class="list-item-badge ${ev.badgeClass}">${ev.badge}</span>
+        </div>
+        <div class="list-item-right">
+          <div class="list-item-amount">${fmt(ev.amt)}</div>
+        </div>
+      </div>`).join(''):'<div class="empty-state"><div class="empty-icon">📋</div><p>No transactions found.</p></div>'}
+    <button class="cancel-btn" onclick="closeModal()">Close</button>`);
+}
+
 function showCustomerHistory(custId){
   const sales=DB.get('sales').filter(r=>r.customerId===custId||(r.customerName&&!r.customerId));
   const loans=DB.get('loans').filter(r=>r.customerId===custId);
@@ -1870,7 +2448,16 @@ function buildVillageList(filterQ){
       const salesR=c.records.filter(r=>r.type==='sale'),loansR=c.records.filter(r=>r.type==='loan'),buysR=c.records.filter(r=>r.type==='buy');
       const runL=loansR.filter(r=>r.status==='Running');
       const pendU=udhars.filter(u=>(u.customerName||'').toLowerCase().trim()===(c.name||'').toLowerCase().trim()&&u.status==='Pending');
-      return`<div class="village-customer"><div class="vc-name">${esc(c.name)}</div><div class="vc-meta">${c.father?'S/o '+esc(c.father):''}${c.mobile?' &bull; 📞'+esc(c.mobile):''}</div><div class="vc-chips">${salesR.length?`<span class="vc-chip badge-green">🧾 ${salesR.length} Sale${salesR.length>1?'s':''}</span>`:''}${runL.length?`<span class="vc-chip badge-red">🔒 ${runL.length} Loan${runL.length>1?'s':''}</span>`:''}${buysR.length?`<span class="vc-chip badge-gold">⚖️ ${buysR.length} Purchase${buysR.length>1?'s':''}</span>`:''}${pendU.length?`<span class="vc-chip badge-purple">📋 Udhar</span>`:''}</div></div>`;
+      const custId2=DB.getActive('customers').find(x=>(x.name||'').toLowerCase().trim()===(c.name||'').toLowerCase().trim()&&(x.mobile||'')===(c.mobile||''))?.id||'';
+      return`<div class="village-customer" style="cursor:pointer;" onclick="showCustomerTimeline('${esc(c.name)}','${esc(c.mobile||'')}','${custId2}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div class="vc-name">${esc(c.name)} <span style="font-size:10px;color:var(--gold);margin-left:4px;">›</span></div>
+            <div class="vc-meta">${c.father?'S/o '+esc(c.father):''}${c.mobile?' &bull; 📞'+esc(c.mobile):''}</div>
+          </div>
+        </div>
+        <div class="vc-chips">${salesR.length?`<span class="vc-chip badge-green">🧾 ${salesR.length} Sale${salesR.length>1?'s':''}</span>`:''}${runL.length?`<span class="vc-chip badge-red">🔒 ${runL.length} Loan${runL.length>1?'s':''}</span>`:''}${buysR.length?`<span class="vc-chip badge-gold">⚖️ ${buysR.length} Old Gold</span>`:''}${pendU.length?`<span class="vc-chip badge-purple">📋 Udhar</span>`:''}</div>
+      </div>`;
     }).join('');
     return`<div class="village-card"><div class="village-header" onclick="document.getElementById('${vId}').classList.toggle('open')"><div class="village-name">🏘️ ${esc(v)}</div><div class="village-stats">${customers.length} customer${customers.length>1?'s':''}<br><strong style="color:var(--gold-dark);">${fmt(totalAmt)}</strong></div></div><div class="village-body" id="${vId}">${custHTML}</div></div>`;
   }).join('');
@@ -1909,7 +2496,7 @@ function editSahukar(id){
   const r=sahukars.find(x=>x.id===id);
   if(!r){showToast('Record not found');return;}
   if(r.status==='Closed'){showToast('⚠️ Cannot edit a closed sahukar entry');return;}
-  const inShopLoans=DB.getActive('loans').filter(l=>l.status==='Running'&&(l.packetStatus==='In Shop'||r.linkedPackets.split(',').includes(l.packetNo)));
+  const inShopLoans=DB.getActive('loans').filter(l=>l.status==='Running'&&(PM.location(l.packetNo)==='Shop'||r.linkedPackets.split(',').includes(l.packetNo)));
   const currentPkts=(r.linkedPackets||'').split(',').filter(Boolean);
   openModal(`<div class="form-title">✏️ Edit Sahukar Entry</div>
     <div class="field"><label>Date</label><input type="date" id="es-date" value="${r.date}"></div>
@@ -1942,9 +2529,15 @@ function saveEditSahukar(id){
   const removedPkts=oldPkts.filter(p=>!newPkts.includes(p));
   const addedPkts=newPkts.filter(p=>!oldPkts.includes(p));
   const loans=DB.get('loans');
-  removedPkts.forEach(p=>{const l=loans.find(x=>x.packetNo===p);if(l)l.packetStatus='In Shop';});
-  addedPkts.forEach(p=>{const l=loans.find(x=>x.packetNo===p);if(l)l.packetStatus='With Sahukar';});
-  DB.set('loans',loans);
+  // Record movements for removed packets (Sahukar → Shop)
+  removedPkts.forEach(p=>{
+    PM.record(p, 'Sahukar', 'Shop', 'sahukar_edit', r.id, 'Packet removed from sahukar borrow');
+  });
+  // Record movements for added packets (Shop → Sahukar)
+  addedPkts.forEach(p=>{
+    PM.record(p, 'Shop', 'Sahukar', 'sahukar_edit', r.id, 'Packet added to sahukar borrow');
+  });
+  // PM.record already syncs loan.packetStatus — no manual mutation needed
   r.date=gv('es-date')||r.date;
   r.sahukarName=gv('es-name')||r.sahukarName;
   r.goldWeight=gf('es-gold');
@@ -1963,7 +2556,14 @@ function saveEditSahukar(id){
 function closeSahukar(id){
   if(!confirm('Close entry?'))return;
   const s=DB.get('sahukars'),item=s.find(x=>x.id===id);
-  if(item){item.status='Closed';const pkts=(item.linkedPackets||'').split(',').filter(Boolean);if(pkts.length){const loans=DB.get('loans');loans.forEach(l=>{if(pkts.includes(l.packetNo)&&l.packetStatus==='With Sahukar')l.packetStatus='In Shop';});DB.set('loans',loans);}}
+  if(item){
+    item.status='Closed';
+    const pkts=(item.linkedPackets||'').split(',').filter(Boolean);
+    pkts.forEach(pktNo=>{
+      // Record movement: Sahukar → Shop (borrow closed)
+      PM.record(pktNo, 'Sahukar', 'Shop', 'sahukar_close', item.id, 'Sahukar borrow closed');
+    });
+  }
   DB.set('sahukars',s);showToast('✅ Entry closed');renderDashboard();showSubScreen('sahukar');
   updateSheetTab('Sahukars').catch(()=>{});updateSheetTab('Loans').catch(()=>{});
 }
@@ -1989,7 +2589,7 @@ function deleteVendorPurchase(id){
 // PHASE 3 — REPORTS
 // ═══════════════════════════════════════════
 function buildReportsHTML(){
-  const sales=DB.get('sales'),loans=DB.get('loans'),udhars=DB.get('udhars'),buys=DB.get('buys'),sahukars=DB.get('sahukars'),vps=DB.get('vendorpurchases');
+  const sales=DB.getActive('sales'),loans=DB.getActive('loans'),udhars=DB.getActive('udhars'),buys=DB.getActive('buys'),sahukars=DB.getActive('sahukars'),vps=DB.getActive('vendorpurchases');
   const sheetUrl=spreadsheetId?`https://docs.google.com/spreadsheets/d/${spreadsheetId}`:null;
 
   // ── Monthly breakdown (last 12 months)
@@ -2183,7 +2783,7 @@ function switchReportTab(tabId, btn){
 // BACKUP SYSTEM
 // ═══════════════════════════════════════════
 const BACKUP_MODULES = ['sales','loans','buys','udhars','sahukars','customers',
-  'sahukarmaster','payments','vendors','vendorpurchases','vendorpayables','edithistory'];
+  'sahukarmaster','payments','vendors','vendorpurchases','vendorpayables','packetmovements','edithistory'];
 
 function collectAllData(){
   const backup = {
@@ -2397,7 +2997,143 @@ function restoreRecord(mod, id){
   renderDashboard();
 }
 
-function clearAllData(){['sales','loans','buys','udhars','sahukars','customers','sahukarmaster','payments','vendors','vendorpurchases','vendorpayables','edithistory'].forEach(k=>localStorage.removeItem('sjj_'+k));closeModal();renderDashboard();showToast('🗑️ All data cleared');}
+function showVendorLedger(vendorId, vendorName){
+  const purchases=DB.getActive('vendorpurchases').filter(v=>vendorId?(v.vendorId===vendorId||v.vendorName===vendorName):v.vendorName===vendorName);
+  const payables=DB.getActive('vendorpayables').filter(v=>vendorId?(v.vendorId===vendorId||v.vendorName===vendorName):v.vendorName===vendorName);
+  const payments=DB.get('payments').filter(p=>p.refType==='vendorpayables'&&payables.find(x=>x.id===p.refId));
+
+  const totalBought=purchases.reduce((a,v)=>a+(+v.totalAmount||0),0);
+  const totalPaid=purchases.reduce((a,v)=>a+(+v.cashPaid||0)+(+v.upiPaid||0)+(+v.bankPaid||0),0)+payments.reduce((a,p)=>a+(+p.amount||0),0);
+  const totalPending=payables.filter(p=>p.status==='Pending').reduce((a,p)=>a+(+p.amount||0)-(+p.amountPaid||0),0);
+
+  // Build ledger rows in chronological order
+  const rows=[];
+  let runBal=0;
+  purchases.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(vp=>{
+    runBal+=+vp.totalAmount||0;
+    const paid=(+vp.cashPaid||0)+(+vp.upiPaid||0)+(+vp.bankPaid||0);
+    runBal-=paid;
+    rows.push({date:vp.date,type:'Purchase',metal:vp.metal,weight:vp.weight,rate:vp.ratePerGram,total:vp.totalAmount,paid,balance:runBal,notes:vp.notes,id:vp.id});
+  });
+  payments.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(p=>{
+    runBal-=+p.amount||0;
+    rows.push({date:p.date,type:'Payment',metal:'',weight:0,rate:0,total:0,paid:+p.amount,balance:runBal,notes:p.notes,id:p.id});
+  });
+  rows.sort((a,b)=>a.date.localeCompare(b.date));
+
+  openModal(`<div class="form-title">🏪 ${esc(vendorName)}</div>
+    <div class="stat-grid" style="margin-bottom:14px;">
+      <div class="stat-card"><div class="stat-label">Total Purchased</div><div class="stat-value" style="font-size:15px;">${fmt(totalBought)}</div></div>
+      <div class="stat-card"><div class="stat-label">Total Paid</div><div class="stat-value green" style="font-size:15px;">${fmt(totalPaid)}</div></div>
+      <div class="stat-card"><div class="stat-label">Outstanding</div><div class="stat-value red" style="font-size:15px;">${fmt(totalPending)}</div></div>
+      <div class="stat-card"><div class="stat-label">Purchases</div><div class="stat-value" style="font-size:15px;">${purchases.length}</div></div>
+    </div>
+    ${totalPending>0?`<button class="submit-btn" style="margin-bottom:14px;" onclick="openVendorPayment('${vendorId}','${esc(vendorName)}')">💰 Make Payment</button>`:''}
+    <div class="history-header">Ledger (${rows.length} entries)</div>
+    ${rows.map(r=>`
+      <div class="ledger-row">
+        <div style="flex:0 0 70px;font-size:10px;color:var(--muted);">${r.date}</div>
+        <div style="flex:1;">
+          <span class="ledger-type ${r.type==='Purchase'?'ledger-purchase':'ledger-payment'}">${r.type}</span>
+          ${r.metal?`<span style="font-size:10px;color:var(--muted);margin-left:4px;">${r.metal} ${r.weight}g</span>`:''}
+          ${r.notes?`<div style="font-size:10px;color:var(--muted);">${esc(r.notes)}</div>`:''}
+        </div>
+        <div style="text-align:right;flex:0 0 80px;">
+          <div style="font-size:12px;font-weight:700;color:${r.type==='Purchase'?'var(--red)':'var(--green)'};">${r.type==='Purchase'?'+':'-'}${fmt(r.type==='Purchase'?r.total:r.paid)}</div>
+          <div style="font-size:10px;color:var(--muted);">Bal: ${fmt(r.balance)}</div>
+        </div>
+      </div>`).join('')||'<p style="color:var(--muted);padding:16px;text-align:center;">No transactions</p>'}
+    <button class="cancel-btn" onclick="closeModal()">Close</button>`);
+}
+
+function openVendorPayment(vendorId, vendorName){
+  const payables=DB.getActive('vendorpayables').filter(p=>p.status==='Pending'&&(vendorId?(p.vendorId===vendorId||p.vendorName===vendorName):p.vendorName===vendorName));
+  const totalPending=payables.reduce((a,p)=>a+(+p.amount||0)-(+p.amountPaid||0),0);
+  openModal(`<div class="form-title">💰 Pay Vendor</div>
+    <div class="interest-display" style="margin-bottom:14px;">
+      <div class="int-label">Vendor</div>
+      <div class="int-value">${esc(vendorName)}</div>
+    </div>
+    <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:14px;">
+      <div style="font-size:13px;color:var(--muted);">Total Outstanding</div>
+      <div style="font-size:22px;font-weight:700;color:var(--red);">${fmt(totalPending)}</div>
+    </div>
+    <div class="field"><label>Payment Amount (₹) *</label><input type="number" id="vp-pay-amount" placeholder="Enter amount" max="${totalPending}"></div>
+    <div class="field"><label>Payment Date</label><input type="date" id="vp-pay-date" value="${today()}"></div>
+    <div class="field"><label>Payment Mode</label>
+      <div class="seg-control">
+        <button class="seg-btn active" onclick="setSeg(this,'vp-pay-mode','Cash')">💵 Cash</button>
+        <button class="seg-btn" onclick="setSeg(this,'vp-pay-mode','UPI')">📱 UPI</button>
+        <button class="seg-btn" onclick="setSeg(this,'vp-pay-mode','Bank')">🏦 Bank</button>
+      </div>
+      <input type="hidden" id="vp-pay-mode" value="Cash">
+    </div>
+    <div class="field"><label>Notes</label><textarea id="vp-pay-notes" placeholder="Payment reference, cheque no..."></textarea></div>
+    <button class="submit-btn" onclick="saveVendorPayment('${vendorId}','${esc(vendorName)}',${totalPending})">✓ Record Payment</button>
+    <button class="cancel-btn" onclick="closeModal()">Cancel</button>`);
+}
+
+function saveVendorPayment(vendorId, vendorName, totalPending){
+  const payAmt=gf('vp-pay-amount');
+  if(!payAmt||payAmt<=0){showToast('⚠️ Enter a valid payment amount');return;}
+  if(payAmt>totalPending+1){showToast('⚠️ Payment exceeds outstanding balance');return;}
+  // Apply payment to pending payables oldest first
+  const payables=DB.get('vendorpayables');
+  let remaining=payAmt;
+  payables.filter(p=>p.status==='Pending'&&(vendorId?(p.vendorId===vendorId||p.vendorName===vendorName):p.vendorName===vendorName))
+    .sort((a,b)=>a.date.localeCompare(b.date))
+    .forEach(p=>{
+      if(remaining<=0)return;
+      const bal=(+p.amount||0)-(+p.amountPaid||0);
+      const apply=Math.min(remaining,bal);
+      p.amountPaid=(+p.amountPaid||0)+apply;
+      if(p.amountPaid>=(+p.amount||0))p.status='Paid';
+      remaining-=apply;
+    });
+  DB.set('vendorpayables',payables);
+  // Record payment
+  const firstPayable=payables.find(p=>vendorId?(p.vendorId===vendorId||p.vendorName===vendorName):p.vendorName===vendorName);
+  const pmt={id:DB.nextId('payments'),refId:firstPayable?.id||vendorId,refType:'vendorpayables',amount:payAmt,date:gv('vp-pay-date'),notes:gv('vp-pay-notes')||gv('vp-pay-mode')+' payment to '+vendorName,createdAt:Date.now()};
+  const payments=DB.get('payments');payments.push(pmt);DB.set('payments',payments);
+  closeModal();
+  showToast('✅ Payment of '+fmt(payAmt)+' recorded for '+vendorName);
+  renderDashboard();
+  updateSheetTab('VendorPayables').catch(()=>{});
+  syncRecord('Payments',pmt);
+}
+
+function showPacketHistory(packetId){
+  const loan=DB.get('loans').find(l=>l.packetNo===packetId);
+  const movements=PM.history(packetId);
+  const locationIcon={Shop:'🏪',Sahukar:'🏦',Customer:'👤'};
+  const refLabels={loan:'Loan Created',sahukar:'Pledged to Sahukar',sahukar_close:'Sahukar Closed',loan_close:'Loan Closed',loan_close_payment:'Fully Paid',sahukar_edit:'Sahukar Edited',sahukar_migrate:'Migrated',close_migrate:'Migrated',customer_migrate:'Migrated'};
+
+  openModal(`<div class="form-title">📋 Packet ${packetId} — Movement History</div>
+    ${loan?`<div style="background:var(--bg);border-radius:12px;padding:10px 14px;margin-bottom:14px;">
+      <div style="font-weight:700;">${esc(loan.customerName)}</div>
+      <div style="font-size:12px;color:var(--muted);">${loan.metal} &bull; ${loan.weight}g &bull; ${esc(loan.item||'—')}</div>
+      <div style="font-size:11px;color:var(--muted);">Current location: <strong style="color:var(--gold-dark);">${PM.location(packetId)||'Unknown'}</strong></div>
+    </div>`:''}
+    ${movements.length?`
+    <div style="position:relative;">
+      ${movements.map((m,i)=>`
+        <div style="display:flex;gap:12px;margin-bottom:14px;">
+          <div style="display:flex;flex-direction:column;align-items:center;flex:0 0 28px;">
+            <div style="width:28px;height:28px;border-radius:50%;background:var(--gold-dark);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">${locationIcon[m.toLocation]||'📦'}</div>
+            ${i<movements.length-1?`<div style="width:2px;flex:1;background:var(--border);margin-top:4px;min-height:20px;"></div>`:''}
+          </div>
+          <div style="padding-top:4px;flex:1;">
+            <div style="font-size:13px;font-weight:700;color:var(--text);">${locationIcon[m.fromLocation]||'📦'} ${m.fromLocation} → ${locationIcon[m.toLocation]||'📦'} ${m.toLocation}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${refLabels[m.referenceType]||m.referenceType}</div>
+            <div style="font-size:11px;color:var(--muted);">${fmtDate(m.movementDate)}</div>
+            ${m.notes?`<div style="font-size:11px;color:var(--blue);font-style:italic;">${esc(m.notes)}</div>`:''}
+          </div>
+        </div>`).join('')}
+    </div>`:'<div class="empty-state"><div class="empty-icon">📋</div><p>No movement history yet.<br>History is recorded for new transactions.</p></div>'}
+    <button class="cancel-btn" onclick="closeModal()">Close</button>`);
+}
+
+function clearAllData(){['sales','loans','buys','udhars','sahukars','customers','sahukarmaster','payments','vendors','vendorpurchases','vendorpayables','packetmovements','edithistory'].forEach(k=>localStorage.removeItem('sjj_'+k));closeModal();renderDashboard();showToast('🗑️ All data cleared');}
 
 // ═══════════════════════════════════════════
 // INIT
@@ -2420,6 +3156,8 @@ window.addEventListener('load',()=>{
 
   // Normal startup — try to restore existing session
   tryRestoreSession();
+  // Run packet movement migration (idempotent)
+  setTimeout(()=>{const migrated=PM.migrate();if(migrated>0)console.log('PM migration: '+migrated+' packets');},1500);
   // Auto daily backup (non-blocking, after 3s)
   setTimeout(()=>{
     autoDailyBackup();
